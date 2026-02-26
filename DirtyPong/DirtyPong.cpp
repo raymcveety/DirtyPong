@@ -52,59 +52,6 @@ SDL_Surface* gKeyPressSurfaces[KEY_PRESS_SURFACE_TOTAL] = {};
 
 SDL_Rect stretchRect;
 
-
-//bool init()
-//{
-//	// Initialize stretch rectangle to be the entire screen
-//	stretchRect.x = 0;
-//	stretchRect.y = 0;
-//	stretchRect.w = SCREEN_WIDTH;
-//	stretchRect.h = SCREEN_HEIGHT;
-//
-//	//Initialization flag
-//	bool success = true;
-//
-//	//Initialize SDL
-//	if( SDL_Init( SDL_INIT_VIDEO ) < 0 )
-//	{
-//		printf( "SDL could not initialize! SDL_Error: %s\n", SDL_GetError() );
-//		success = false;
-//	}
-//	else
-//	{
-//		//Create window
-//		gWindow = SDL_CreateWindow( "SDL Tutorial", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, SCREEN_WIDTH, SCREEN_HEIGHT, SDL_WINDOW_SHOWN );
-//		if( gWindow == NULL )
-//		{
-//			printf( "Window could not be created! SDL_Error: %s\n", SDL_GetError() );
-//			success = false;
-//		}
-//		else
-//		{
-//			// Initialize PNG loading
-//			int imgFlags = IMG_INIT_PNG;
-//
-//			if (!IMG_Init(imgFlags) & imgFlags)
-//			{
-//				printf("SDL_image could not initialize! SDL_image Error: %s\n", IMG_GetError());
-//				success = false;
-//			} 
-//			else 
-//			{
-//				//Get window surface
-//				gScreenSurface = SDL_GetWindowSurface(gWindow);
-//				if (gScreenSurface == NULL)
-//				{
-//					printf("Could not get window surface! SDL_Error: %s\n", SDL_GetError());
-//					success = false;
-//				}
-//			}
-//		}
-//	}
-//
-//	return success;
-//}
-
 bool init()
 {
 	// Initialize stretch rectangle to be the entire screen
