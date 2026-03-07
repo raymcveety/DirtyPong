@@ -194,25 +194,8 @@ SDL_Surface* loadSurface(std::string path)
 	return loadedSurface;
 }
 
-//SDL_Texture* loadTexture(std::string path)
-//{
-//	return IMG_LoadTexture(gRenderer, path.c_str());
-//}
-
 void close()
 {
-	// Free only the surfaces we explicitly loaded into gKeyPressSurfaces.
-	//for (int i = 0; i < KEY_PRESS_SURFACE_TOTAL; i++)
-	//{
-	//	if (gKeyPressSurfaces[i] != NULL)
-	//	{
-	//		// SDl_FreeSurface frees memory associated with the surface
-	//		SDL_FreeSurface(gKeyPressSurfaces[i]);
-	//		// I manually set the pointer to NULL to avoid dangling pointer issues.
-	//		gKeyPressSurfaces[i] = NULL;
-	//	}
-	//}
-
 	// Free only the textures we explcititly loaded in to gKeyPressTextures
 	for (int i = 0; i < KEY_PRESS_TEXTURE_TOTAL; i++)
 	{
