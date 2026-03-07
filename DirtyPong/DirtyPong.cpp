@@ -28,27 +28,30 @@ void close();
 SDL_Surface* loadSurface(std::string path);
 
 //Key press surfaces constants
-enum KeyPressSurfaces
+enum KeyPressTextures
 {
-	KEY_PRESS_SURFACE_DEFAULT,
-	KEY_PRESS_SURFACE_UP,
-	KEY_PRESS_SURFACE_DOWN,
-	KEY_PRESS_SURFACE_LEFT,
-	KEY_PRESS_SURFACE_RIGHT,
-	KEY_PRESS_SURFACE_TOTAL
+	KEY_PRESS_TEXTURE_DEFAULT,
+	KEY_PRESS_TEXTURE_UP,
+	KEY_PRESS_TEXTURE_DOWN,
+	KEY_PRESS_TEXTURE_LEFT,
+	KEY_PRESS_TEXTURE_RIGHT,
+	KEY_PRESS_TEXTURE_TOTAL
 };
 
 //The window we'll be rendering to
 SDL_Window* gWindow = NULL;
+
+// The window renderer
+SDL_Renderer* gRenderer = NULL;
+
+// Current displayed texture
+SDL_Texture* gCurrentTexture = NULL;
 	
 //The surface contained by the window
 SDL_Surface* gScreenSurface = NULL;
 
-// Current displayed image
-SDL_Surface* gCurrentSurface = NULL;
-
-//The images that correspond to a keypress
-SDL_Surface* gKeyPressSurfaces[KEY_PRESS_SURFACE_TOTAL] = {};
+// The textures taht correspond to a keypress
+SDL_Texture* gKeyPressTextures[KEY_PRESS_TEXTURE_TOTAL] = {};
 
 SDL_Rect stretchRect;
 
@@ -75,6 +78,27 @@ bool init()
 		return false;
 	}
 
+	// Using rednerer accelerated which uses the GPU to render
+	// wondering if it's possible to bitwise OR these and what the purpose 
+	// if maybe this should have 0 passed so SDL will try to use renderer?
+	// Is there automatic selection/fallback if I don't specify requirement via
+	// flags?
+	gRenderer = SDL_CreateRenderer(gWindow, -1, SDL_RENDERER_ACCELERATED);
+
+	if (!gRenderer)
+	{
+		gRenderer = SDL_CreateRenderer(gWindow, -1, 0);
+	}
+
+	if (!gRenderer)
+	{
+		printf("Renderer could not be created! SDL_Error: %s\n", SDL_GetError());
+		return false;
+	}
+
+	// Initialize the rendering color
+	SDL_SetRenderDrawColor(gRenderer, 0xFF, 0xFF, 0xFF, 0xFF);
+
 	// Initialize PNG loading
 	int imgFlags = IMG_INIT_PNG;
 	if (!IMG_Init(imgFlags) & imgFlags)
@@ -93,43 +117,46 @@ bool init()
 	
 	return true;
 }
+
 bool loadMedia()
 {
 	//Load default surface
-	gKeyPressSurfaces[KEY_PRESS_SURFACE_DEFAULT] = loadSurface("pngs/press.png");
-	if (gKeyPressSurfaces[KEY_PRESS_SURFACE_DEFAULT] == NULL)
+	gKeyPressTextures[KEY_PRESS_TEXTURE_DEFAULT] = IMG_LoadTexture(gRenderer, "pngs/press.png");
+	
+	// Question to return to, is it better to ! for these?
+	if (gKeyPressTextures[KEY_PRESS_TEXTURE_DEFAULT] == NULL)
 	{
 		printf("Failed to load default image!\n");
 		return false;
 	}
 
 	//Load up surface
-	gKeyPressSurfaces[KEY_PRESS_SURFACE_UP] = loadSurface("pngs/up.png");
-	if (gKeyPressSurfaces[KEY_PRESS_SURFACE_UP] == NULL)
+	gKeyPressTextures[KEY_PRESS_TEXTURE_UP] = IMG_LoadTexture(gRenderer, "pngs/up.png");
+	if (gKeyPressTextures[KEY_PRESS_TEXTURE_UP] == NULL)
 	{
 		printf("Failed to load up image!\n");
 		return false;
 	}
 
 	//Load down surface
-	gKeyPressSurfaces[KEY_PRESS_SURFACE_DOWN] = loadSurface("pngs/down.png");
-	if (gKeyPressSurfaces[KEY_PRESS_SURFACE_DOWN] == NULL)
+	gKeyPressTextures[KEY_PRESS_TEXTURE_DOWN] = IMG_LoadTexture(gRenderer, "pngs/down.png");
+	if (gKeyPressTextures[KEY_PRESS_TEXTURE_DOWN] == NULL)
 	{
 		printf("Failed to load down image!\n");
 		return false;
 	}
 
 	//Load left surface
-	gKeyPressSurfaces[KEY_PRESS_SURFACE_LEFT] = loadSurface("pngs/left.png");
-	if (gKeyPressSurfaces[KEY_PRESS_SURFACE_LEFT] == NULL)
+	gKeyPressTextures[KEY_PRESS_TEXTURE_LEFT] = IMG_LoadTexture(gRenderer, "pngs/left.png");
+	if (gKeyPressTextures[KEY_PRESS_TEXTURE_LEFT] == NULL)
 	{
 		printf("Failed to load left image!\n");
 		return false;
 	}
 
 	//Load right surface
-	gKeyPressSurfaces[KEY_PRESS_SURFACE_RIGHT] = loadSurface("pngs/right.png");
-	if (gKeyPressSurfaces[KEY_PRESS_SURFACE_RIGHT] == NULL)
+	gKeyPressTextures[KEY_PRESS_TEXTURE_RIGHT] = IMG_LoadTexture(gRenderer, "pngs/right.png");
+	if (gKeyPressTextures[KEY_PRESS_TEXTURE_RIGHT] == NULL)
 	{
 		printf("Failed to load right image!\n");
 		return false;
@@ -167,22 +194,36 @@ SDL_Surface* loadSurface(std::string path)
 	return loadedSurface;
 }
 
+//SDL_Texture* loadTexture(std::string path)
+//{
+//	return IMG_LoadTexture(gRenderer, path.c_str());
+//}
+
 void close()
 {
 	// Free only the surfaces we explicitly loaded into gKeyPressSurfaces.
-	for (int i = 0; i < KEY_PRESS_SURFACE_TOTAL; i++)
+	//for (int i = 0; i < KEY_PRESS_SURFACE_TOTAL; i++)
+	//{
+	//	if (gKeyPressSurfaces[i] != NULL)
+	//	{
+	//		// SDl_FreeSurface frees memory associated with the surface
+	//		SDL_FreeSurface(gKeyPressSurfaces[i]);
+	//		// I manually set the pointer to NULL to avoid dangling pointer issues.
+	//		gKeyPressSurfaces[i] = NULL;
+	//	}
+	//}
+
+	// Free only the textures we explcititly loaded in to gKeyPressTextures
+	for (int i = 0; i < KEY_PRESS_TEXTURE_TOTAL; i++)
 	{
-		if (gKeyPressSurfaces[i] != NULL)
+		if (gKeyPressTextures[i] != NULL)
 		{
 			// SDl_FreeSurface frees memory associated with the surface
-			SDL_FreeSurface(gKeyPressSurfaces[i]);
+			SDL_DestroyTexture(gKeyPressTextures[i]);
 			// I manually set the pointer to NULL to avoid dangling pointer issues.
-			gKeyPressSurfaces[i] = NULL;
+			gKeyPressTextures[i] = NULL;
 		}
 	}
-
-	// gCurrentSurface points into gKeyPressSurfaces; do not free it again.
-	gCurrentSurface = NULL;
 
 	// gScreenSurface is owned by the window (returned by SDL_GetWindowSurface).
 	// The lesson here is taht you only free memory that you allocate
@@ -192,6 +233,13 @@ void close()
 	// Do not call SDL_FreeSurface on it.
 	gScreenSurface = NULL;
 
+	// Destroy Renderer
+	if (gRenderer != NULL)
+	{
+		SDL_DestroyRenderer(gRenderer);
+		gRenderer = NULL;
+	}
+
 	//Destroy window
 	if (gWindow != NULL)
 	{
@@ -200,6 +248,7 @@ void close()
 	}
 
 	//Quit SDL subsystems
+	IMG_Quit();
 	SDL_Quit();
 }
 
@@ -225,9 +274,8 @@ int main( int argc, char* args[] )
 	//Event handler
 	SDL_Event e;
 
-	//Set default current surface
-	gCurrentSurface = gKeyPressSurfaces[KEY_PRESS_SURFACE_DEFAULT];
-
+	//Set default current texture
+	gCurrentTexture = gKeyPressTextures[KEY_PRESS_TEXTURE_DEFAULT];
 
 	// Game Loop
 	while (!quit)
@@ -250,19 +298,19 @@ int main( int argc, char* args[] )
 				switch (e.key.keysym.sym)
 				{
 					case SDLK_UP:
-						gCurrentSurface = gKeyPressSurfaces[KEY_PRESS_SURFACE_UP];
+						gCurrentTexture = gKeyPressTextures[KEY_PRESS_TEXTURE_UP];
 						break;
 					case SDLK_DOWN:
-						gCurrentSurface = gKeyPressSurfaces[KEY_PRESS_SURFACE_DOWN];
+						gCurrentTexture = gKeyPressTextures[KEY_PRESS_TEXTURE_DOWN];
 						break;
 					case SDLK_LEFT:
-						gCurrentSurface = gKeyPressSurfaces[KEY_PRESS_SURFACE_LEFT];
+						gCurrentTexture = gKeyPressTextures[KEY_PRESS_TEXTURE_LEFT];
 						break;
 					case SDLK_RIGHT:
-						gCurrentSurface = gKeyPressSurfaces[KEY_PRESS_SURFACE_RIGHT];
+						gCurrentTexture = gKeyPressTextures[KEY_PRESS_TEXTURE_RIGHT];
 						break;
 					default:
-						gCurrentSurface = gKeyPressSurfaces[KEY_PRESS_SURFACE_DEFAULT];
+						gCurrentTexture = gKeyPressTextures[KEY_PRESS_TEXTURE_DEFAULT];
 						break;
 				}
 			}
@@ -273,12 +321,15 @@ int main( int argc, char* args[] )
 		// TBD
 
 		// 3. Render the screen
-		//Apply the image
-		//SDL_BlitSurface(gCurrentSurface, NULL, gScreenSurface, NULL);
-		SDL_BlitScaled(gCurrentSurface, NULL, gScreenSurface, &stretchRect);
 
-		//Update the surface of the window
-		SDL_UpdateWindowSurface(gWindow);
+		// Clear screen
+		SDL_RenderClear(gRenderer);
+
+		// Render texture to screen
+		SDL_RenderCopy(gRenderer, gCurrentTexture, NULL, NULL);
+
+		// Update screen
+		SDL_RenderPresent(gRenderer);
 	}
 
 	//Free resources and close SDL
