@@ -9,6 +9,7 @@ and may not be redistributed without written permission.*/
 #include <SDL_image.h>
 #include <stdio.h>
 #include <string>
+#include <cmath>
 
 //Screen dimension constants
 const int SCREEN_WIDTH = 640;
@@ -310,6 +311,28 @@ int main( int argc, char* args[] )
 
 		// Render texture to screen
 		SDL_RenderCopy(gRenderer, gCurrentTexture, NULL, NULL);
+
+		// Top left corner of screen is 0,0 and bottom right corner is 640,480
+		// Render a filled quad
+		SDL_Rect fillRect = { SCREEN_WIDTH / 4, SCREEN_HEIGHT / 4, SCREEN_WIDTH / 2, SCREEN_HEIGHT / 2 };
+		SDL_SetRenderDrawColor(gRenderer, 0xFF, 0x00, 0x00, 0xFF);
+		SDL_RenderFillRect(gRenderer, &fillRect);
+
+		// Render a green outlined quad
+		SDL_Rect outlineRect = { SCREEN_WIDTH / 6, SCREEN_HEIGHT / 6, SCREEN_WIDTH * 2 / 3, SCREEN_HEIGHT * 2 / 3 };
+		SDL_SetRenderDrawColor(gRenderer, 0x00, 0xFF, 0x00, 0xFF);
+		SDL_RenderDrawRect(gRenderer, &outlineRect);
+
+		// Draw a blue horizontal line
+		SDL_SetRenderDrawColor(gRenderer, 0x00, 0x00, 0xFF, 0xFF);
+		SDL_RenderDrawLine(gRenderer, 0, SCREEN_HEIGHT / 2, SCREEN_WIDTH, SCREEN_HEIGHT / 2);
+
+		// Draw a vertical line of yellow dots
+		SDL_SetRenderDrawColor(gRenderer, 0xFF, 0xFF, 0x00, 0xFF);
+		for (int i = 0; i < SCREEN_HEIGHT; i += 4)
+		{
+			SDL_RenderDrawPoint(gRenderer, SCREEN_WIDTH / 2, i);
+		}
 
 		// Update screen
 		SDL_RenderPresent(gRenderer);
