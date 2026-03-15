@@ -10,10 +10,19 @@ and may not be redistributed without written permission.*/
 #include <stdio.h>
 #include <string>
 #include <cmath>
+#include <time.h>
 
 //Screen dimension constants
 const int SCREEN_WIDTH = 640;
 const int SCREEN_HEIGHT = 480;
+
+// misc constants
+const int DIVIDER_BLOCK_WIDTH = 10;
+const int DIVIDER_BLOCK_HEIGHT = DIVIDER_BLOCK_WIDTH;
+const int PLAYER_PADDLE_WIDTH = DIVIDER_BLOCK_WIDTH;
+const int PLAYER_PADDLE_HEIGHT = SCREEN_HEIGHT / 4;
+const float PLAYER_PADDLE_SPEED = 1000.0;
+const float PLACEHOLDER_DELTA_TIME = 1.0 / 144.0;
 
 //Starts up SDL and creates window
 bool init();
@@ -27,6 +36,10 @@ void close();
 
 //Loads individual image
 SDL_Surface* loadSurface(std::string path);
+
+// Renders a rectangle using its center as the orign
+void renderRect(SDL_Renderer* renderer,
+	const SDL_Rect* rectPtr);
 
 //Key press surfaces constants
 enum KeyPressTextures
@@ -84,7 +97,7 @@ bool init()
 	// if maybe this should have 0 passed so SDL will try to use renderer?
 	// Is there automatic selection/fallback if I don't specify requirement via
 	// flags?
-	gRenderer = SDL_CreateRenderer(gWindow, -1, SDL_RENDERER_ACCELERATED);
+	gRenderer = SDL_CreateRenderer(gWindow, -1, SDL_RENDERER_ACCELERATED | SDL_RENDERER_PRESENTVSYNC);
 
 	if (!gRenderer)
 	{
@@ -236,6 +249,21 @@ void close()
 	SDL_Quit();
 }
 
+void renderRect(SDL_Renderer* renderer,
+	const SDL_Rect* rectPtr)
+{
+	// x, y, w, h
+	SDL_Rect renderRect = 
+	{
+		rectPtr->x - (rectPtr->w)/2, 
+		rectPtr->y - (rectPtr->h)/2,
+		rectPtr->w,
+		rectPtr->h
+	};
+
+	SDL_RenderFillRect(gRenderer, &renderRect);
+}
+
 int main( int argc, char* args[] )
 {
 	//Start up SDL and create window
@@ -261,9 +289,24 @@ int main( int argc, char* args[] )
 	//Set default current texture
 	gCurrentTexture = gKeyPressTextures[KEY_PRESS_TEXTURE_DEFAULT];
 
+	// Paddle state init
+	float leftPlayerPaddleY = SCREEN_HEIGHT / 2.0;
+	float rightPlayerPaddleY = SCREEN_HEIGHT / 2.0;
+
+	// Input state  init
+	// In a better game this should be a bitmask
+	bool upHeld = false;
+	bool downHeld = false;
+	bool wHeld = false;
+	bool sHeld = false;
+
+	float deltaTime = PLACEHOLDER_DELTA_TIME;
+
 	// Game Loop
 	while (!quit)
 	{
+
+		//int deltaTime = ts.tv_nsec
 		// Game Loop 1. Collect input/events in queue
 		// Handle events on queue
 		// SDL_PollEvent() returns 1 if there are any events in the queue, otherwise it returns 0.
@@ -281,28 +324,102 @@ int main( int argc, char* args[] )
 			{
 				switch (e.key.keysym.sym)
 				{
+					// left player input
+					case SDLK_w:
+						//gCurrentTexture = gKeyPressTextures[KEY_PRESS_TEXTURE_LEFT];
+						wHeld = true;
+						break;
+					case SDLK_s:
+						//gCurrentTexture = gKeyPressTextures[KEY_PRESS_TEXTURE_RIGHT];
+						//leftPlayerPaddleY += PLAYER_PADDLE_SPEED*deltaTime;
+						sHeld = true;
+						break;
+
+					// right player input
 					case SDLK_UP:
-						gCurrentTexture = gKeyPressTextures[KEY_PRESS_TEXTURE_UP];
+						//gCurrentTexture = gKeyPressTextures[KEY_PRESS_TEXTURE_UP];
+						upHeld = true;
 						break;
 					case SDLK_DOWN:
-						gCurrentTexture = gKeyPressTextures[KEY_PRESS_TEXTURE_DOWN];
-						break;
-					case SDLK_LEFT:
-						gCurrentTexture = gKeyPressTextures[KEY_PRESS_TEXTURE_LEFT];
-						break;
-					case SDLK_RIGHT:
-						gCurrentTexture = gKeyPressTextures[KEY_PRESS_TEXTURE_RIGHT];
+						//gCurrentTexture = gKeyPressTextures[KEY_PRESS_TEXTURE_DOWN];
+						downHeld = true;
 						break;
 					default:
-						gCurrentTexture = gKeyPressTextures[KEY_PRESS_TEXTURE_DEFAULT];
+						//gCurrentTexture = gKeyPressTextures[KEY_PRESS_TEXTURE_DEFAULT];
 						break;
+				}
+			} 
+			else if (e.type == SDL_KEYUP)
+			{
+				switch (e.key.keysym.sym)
+				{
+					// left player input
+				case SDLK_w:
+					//gCurrentTexture = gKeyPressTextures[KEY_PRESS_TEXTURE_LEFT];
+					wHeld = false;
+					break;
+				case SDLK_s:
+					sHeld = false;
+					break;
+
+					// right player input
+				case SDLK_UP:
+					upHeld = false;
+					//gCurrentTexture = gKeyPressTextures[KEY_PRESS_TEXTURE_UP];
+					break;
+				case SDLK_DOWN:
+					downHeld = false;
+					//gCurrentTexture = gKeyPressTextures[KEY_PRESS_TEXTURE_DOWN];
+					break;
+				default:
+					//gCurrentTexture = gKeyPressTextures[KEY_PRESS_TEXTURE_DEFAULT];
+					break;
 				}
 			}
 		}
 
 
 		// 2. Update the game state
-		// TBD
+		if (wHeld)
+		{
+			leftPlayerPaddleY -= (PLAYER_PADDLE_SPEED * deltaTime);
+		}
+
+		if (sHeld && (leftPlayerPaddleY <= (SCREEN_HEIGHT - PLAYER_PADDLE_HEIGHT / 2)))
+		{
+			leftPlayerPaddleY += PLAYER_PADDLE_SPEED*deltaTime;
+		}
+
+		if (upHeld)
+		{
+			rightPlayerPaddleY -= (PLAYER_PADDLE_SPEED * deltaTime);
+		}
+
+		if (downHeld)
+		{
+			rightPlayerPaddleY += PLAYER_PADDLE_SPEED * deltaTime;
+		}
+
+		// Clamp to boundaries
+		if (leftPlayerPaddleY <= PLAYER_PADDLE_HEIGHT / 2)
+		{
+			leftPlayerPaddleY = PLAYER_PADDLE_HEIGHT / 2;
+		}
+
+		if (leftPlayerPaddleY >= (SCREEN_HEIGHT - PLAYER_PADDLE_HEIGHT / 2))
+		{
+			leftPlayerPaddleY = (SCREEN_HEIGHT - PLAYER_PADDLE_HEIGHT / 2);
+		}
+
+		if (rightPlayerPaddleY <= PLAYER_PADDLE_HEIGHT / 2)
+		{
+			rightPlayerPaddleY = PLAYER_PADDLE_HEIGHT / 2;
+		}
+
+		if (rightPlayerPaddleY >= (SCREEN_HEIGHT - PLAYER_PADDLE_HEIGHT / 2))
+		{
+			rightPlayerPaddleY = (SCREEN_HEIGHT - PLAYER_PADDLE_HEIGHT / 2);
+		}
 
 		// 3. Render the screen
 
@@ -314,25 +431,38 @@ int main( int argc, char* args[] )
 
 		// Top left corner of screen is 0,0 and bottom right corner is 640,480
 		// Render a filled quad
-		SDL_Rect fillRect = { SCREEN_WIDTH / 4, SCREEN_HEIGHT / 4, SCREEN_WIDTH / 2, SCREEN_HEIGHT / 2 };
-		SDL_SetRenderDrawColor(gRenderer, 0xFF, 0x00, 0x00, 0xFF);
-		SDL_RenderFillRect(gRenderer, &fillRect);
+		//SDL_Rect fillRect = { SCREEN_WIDTH / 4, SCREEN_HEIGHT / 4, SCREEN_WIDTH / 2, SCREEN_HEIGHT / 2 };
+		//SDL_SetRenderDrawColor(gRenderer, 0xFF, 0x00, 0x00, 0xFF);
+		//SDL_RenderFillRect(gRenderer, &fillRect);
 
-		// Render a green outlined quad
-		SDL_Rect outlineRect = { SCREEN_WIDTH / 6, SCREEN_HEIGHT / 6, SCREEN_WIDTH * 2 / 3, SCREEN_HEIGHT * 2 / 3 };
-		SDL_SetRenderDrawColor(gRenderer, 0x00, 0xFF, 0x00, 0xFF);
-		SDL_RenderDrawRect(gRenderer, &outlineRect);
+		//// Render a green outlined quad
+		//SDL_Rect outlineRect = { SCREEN_WIDTH / 6, SCREEN_HEIGHT / 6, SCREEN_WIDTH * 2 / 3, SCREEN_HEIGHT * 2 / 3 };
+		//SDL_SetRenderDrawColor(gRenderer, 0x00, 0xFF, 0x00, 0xFF);
+		//SDL_RenderDrawRect(gRenderer, &outlineRect);
 
-		// Draw a blue horizontal line
-		SDL_SetRenderDrawColor(gRenderer, 0x00, 0x00, 0xFF, 0xFF);
-		SDL_RenderDrawLine(gRenderer, 0, SCREEN_HEIGHT / 2, SCREEN_WIDTH, SCREEN_HEIGHT / 2);
+		//// Draw a blue horizontal line
+		//SDL_SetRenderDrawColor(gRenderer, 0x00, 0x00, 0xFF, 0xFF);
+		//SDL_RenderDrawLine(gRenderer, 0, SCREEN_HEIGHT / 2, SCREEN_WIDTH, SCREEN_HEIGHT / 2);
 
-		// Draw a vertical line of yellow dots
-		SDL_SetRenderDrawColor(gRenderer, 0xFF, 0xFF, 0x00, 0xFF);
-		for (int i = 0; i < SCREEN_HEIGHT; i += 4)
+		// Draw a vertical line of black dots
+		SDL_SetRenderDrawColor(gRenderer, 0, 0, 0, 0xFF);
+		
+		for (int i = DIVIDER_BLOCK_HEIGHT; i < SCREEN_HEIGHT; i += (DIVIDER_BLOCK_HEIGHT*2))
 		{
-			SDL_RenderDrawPoint(gRenderer, SCREEN_WIDTH / 2, i);
+			SDL_Rect dotRect = { SCREEN_WIDTH / 2, i, DIVIDER_BLOCK_WIDTH, DIVIDER_BLOCK_HEIGHT };
+			renderRect(gRenderer, &dotRect);
 		}
+
+		// Draw player rectangles
+		// Player 1
+		SDL_Rect fillRect = { PLAYER_PADDLE_WIDTH, (int)leftPlayerPaddleY, DIVIDER_BLOCK_WIDTH, PLAYER_PADDLE_HEIGHT };
+		SDL_SetRenderDrawColor(gRenderer, 0x00, 0x00, 0x00, 0xFF);
+		renderRect(gRenderer, &fillRect);
+
+		// Player 2
+		fillRect = { SCREEN_WIDTH - PLAYER_PADDLE_WIDTH,(int)rightPlayerPaddleY, DIVIDER_BLOCK_WIDTH, PLAYER_PADDLE_HEIGHT };
+		SDL_SetRenderDrawColor(gRenderer, 0x00, 0x00, 0x00, 0xFF);
+		renderRect(gRenderer, &fillRect);
 
 		// Update screen
 		SDL_RenderPresent(gRenderer);
