@@ -11,6 +11,7 @@ and may not be redistributed without written permission.*/
 #include <string>
 #include <cmath>
 #include <time.h>
+#include <random>
 
 //Screen dimension constants
 const int SCREEN_WIDTH = 640;
@@ -23,6 +24,18 @@ const int PLAYER_PADDLE_WIDTH = DIVIDER_BLOCK_WIDTH;
 const int PLAYER_PADDLE_HEIGHT = SCREEN_HEIGHT / 4;
 const float PLAYER_PADDLE_SPEED = 1000.0;
 const float PLACEHOLDER_DELTA_TIME = 1.0 / 144.0;
+const float STARTING_BALL_SPEED = 1.5;
+const float BALL_SPEED_SCALAR = 2.0;
+
+// Struct for vector2 representation
+// for a project this small better learning
+// experience to use my own data type. From
+// research an open source alternative is OpenGL
+// math library. (https://github.com/g-truc/glm link
+// provided 3/21/2026, not verified since
+struct Vector2 {
+	float x, y;
+};
 
 //Starts up SDL and creates window
 bool init();
@@ -33,13 +46,19 @@ bool loadMedia();
 //Frees media and shuts down SDL
 void close();
 
-
 //Loads individual image
 SDL_Surface* loadSurface(std::string path);
 
 // Renders a rectangle using its center as the orign
 void renderRect(SDL_Renderer* renderer,
 	const SDL_Rect* rectPtr);
+
+// Gives random value between -1 and 1 but excludes values that yield boring game start if ball
+// is in center
+Vector2 randomizeBallDirection();
+
+// Spawns a ball in the center of the screen with a randomized direction and speed
+void respawnBall(float* ballXptr, float* ballYptr, float* ballSpeedXPtr, float* ballSpeedYPtr);
 
 //Key press surfaces constants
 enum KeyPressTextures
@@ -69,8 +88,12 @@ SDL_Texture* gKeyPressTextures[KEY_PRESS_TEXTURE_TOTAL] = {};
 
 SDL_Rect stretchRect;
 
+
 bool init()
 {
+	// Seed random number generator
+	srand(time(NULL));
+
 	// Initialize stretch rectangle to be the entire screen
 	stretchRect.x = 0;
 	stretchRect.y = 0;
@@ -135,46 +158,46 @@ bool init()
 bool loadMedia()
 {
 	//Load default surface
-	gKeyPressTextures[KEY_PRESS_TEXTURE_DEFAULT] = IMG_LoadTexture(gRenderer, "pngs/press.png");
+	//gKeyPressTextures[KEY_PRESS_TEXTURE_DEFAULT] = IMG_LoadTexture(gRenderer, "pngs/press.png");
 	
-	// Question to return to, is it better to ! for these?
-	if (gKeyPressTextures[KEY_PRESS_TEXTURE_DEFAULT] == NULL)
-	{
-		printf("Failed to load default image!\n");
-		return false;
-	}
+	//// Question to return to, is it better to ! for these?
+	//if (gKeyPressTextures[KEY_PRESS_TEXTURE_DEFAULT] == NULL)
+	//{
+	//	printf("Failed to load default image!\n");
+	//	return false;
+	//}
 
-	//Load up surface
-	gKeyPressTextures[KEY_PRESS_TEXTURE_UP] = IMG_LoadTexture(gRenderer, "pngs/up.png");
-	if (gKeyPressTextures[KEY_PRESS_TEXTURE_UP] == NULL)
-	{
-		printf("Failed to load up image!\n");
-		return false;
-	}
+	////Load up surface
+	//gKeyPressTextures[KEY_PRESS_TEXTURE_UP] = IMG_LoadTexture(gRenderer, "pngs/up.png");
+	//if (gKeyPressTextures[KEY_PRESS_TEXTURE_UP] == NULL)
+	//{
+	//	printf("Failed to load up image!\n");
+	//	return false;
+	//}
 
-	//Load down surface
-	gKeyPressTextures[KEY_PRESS_TEXTURE_DOWN] = IMG_LoadTexture(gRenderer, "pngs/down.png");
-	if (gKeyPressTextures[KEY_PRESS_TEXTURE_DOWN] == NULL)
-	{
-		printf("Failed to load down image!\n");
-		return false;
-	}
+	////Load down surface
+	//gKeyPressTextures[KEY_PRESS_TEXTURE_DOWN] = IMG_LoadTexture(gRenderer, "pngs/down.png");
+	//if (gKeyPressTextures[KEY_PRESS_TEXTURE_DOWN] == NULL)
+	//{
+	//	printf("Failed to load down image!\n");
+	//	return false;
+	//}
 
-	//Load left surface
-	gKeyPressTextures[KEY_PRESS_TEXTURE_LEFT] = IMG_LoadTexture(gRenderer, "pngs/left.png");
-	if (gKeyPressTextures[KEY_PRESS_TEXTURE_LEFT] == NULL)
-	{
-		printf("Failed to load left image!\n");
-		return false;
-	}
+	////Load left surface
+	//gKeyPressTextures[KEY_PRESS_TEXTURE_LEFT] = IMG_LoadTexture(gRenderer, "pngs/left.png");
+	//if (gKeyPressTextures[KEY_PRESS_TEXTURE_LEFT] == NULL)
+	//{
+	//	printf("Failed to load left image!\n");
+	//	return false;
+	//}
 
-	//Load right surface
-	gKeyPressTextures[KEY_PRESS_TEXTURE_RIGHT] = IMG_LoadTexture(gRenderer, "pngs/right.png");
-	if (gKeyPressTextures[KEY_PRESS_TEXTURE_RIGHT] == NULL)
-	{
-		printf("Failed to load right image!\n");
-		return false;
-	}
+	////Load right surface
+	//gKeyPressTextures[KEY_PRESS_TEXTURE_RIGHT] = IMG_LoadTexture(gRenderer, "pngs/right.png");
+	//if (gKeyPressTextures[KEY_PRESS_TEXTURE_RIGHT] == NULL)
+	//{
+	//	printf("Failed to load right image!\n");
+	//	return false;
+	//}
 
 	return true;
 }
@@ -264,6 +287,42 @@ void renderRect(SDL_Renderer* renderer,
 	SDL_RenderFillRect(gRenderer, &renderRect);
 }
 
+Vector2 randomizeBallDirection()
+{
+	/*float resultX; 
+	do
+	{
+		resultX = 1.0 - (((float)(rand() % 20) + 1.0)/10.0);
+		printf("result %f \n", resultX);
+	} while (abs(resultX) < 0.7);
+
+	float resultY;
+	do
+	{
+		resultY = 1.0 - (((float)(rand() % 20) + 1.0) / 10.0);
+		printf("result %f \n", resultY);
+	} while (abs(resultY) > 0.4);*/
+
+	Vector2 result;
+	do
+	{
+		result.x = 1.0 - (((float)(rand() % 20) + 1.0) / 10.0);
+		result.y = 1.0 - (((float)(rand() % 20) + 1.0) / 10.0);
+	} while ((abs(result.x) < 0.7) || (abs(result.y) > 0.5));
+
+	//return { resultX, resultY };
+	return result;
+}
+
+void respawnBall(float* ballXptr, float* ballYptr, float* ballSpeedXPtr, float* ballSpeedYPtr)
+{
+	*ballXptr = SCREEN_WIDTH / 2.0;
+	*ballYptr = SCREEN_HEIGHT / 2.0;
+	Vector2 randomBallDirection = randomizeBallDirection();
+	*ballSpeedXPtr = randomBallDirection.x;
+	*ballSpeedYPtr = randomBallDirection.y;
+}
+
 int main( int argc, char* args[] )
 {
 	//Start up SDL and create window
@@ -293,21 +352,33 @@ int main( int argc, char* args[] )
 	float leftPlayerPaddleY = SCREEN_HEIGHT / 2.0;
 	float rightPlayerPaddleY = SCREEN_HEIGHT / 2.0;
 
+	// Ball state init
+	float ballX = SCREEN_WIDTH / 2.0;
+	float ballY = SCREEN_HEIGHT / 2.0;
+	int xDirection = 1;
+	int yDirection = 1;
+
+	// Old code. Trying to randomize the starting position
+	/*float ballSpeedX = randomizeBallDirection();
+	float ballSpeedY = randomizeBallDirection();*/
+	Vector2 ballDirection = randomizeBallDirection();
+
+
 	// Input state  init
 	// In a better game this should be a bitmask
 	bool upHeld = false;
 	bool downHeld = false;
 	bool wHeld = false;
 	bool sHeld = false;
+	bool respawnBallHeld = false;
 
 	float deltaTime = PLACEHOLDER_DELTA_TIME;
 
 	// Game Loop
 	while (!quit)
 	{
-
+		//// 1. Collect input
 		//int deltaTime = ts.tv_nsec
-		// Game Loop 1. Collect input/events in queue
 		// Handle events on queue
 		// SDL_PollEvent() returns 1 if there are any events in the queue, otherwise it returns 0.
 		while (SDL_PollEvent(&e) != 0)
@@ -334,6 +405,7 @@ int main( int argc, char* args[] )
 						//leftPlayerPaddleY += PLAYER_PADDLE_SPEED*deltaTime;
 						sHeld = true;
 						break;
+					
 
 					// right player input
 					case SDLK_UP:
@@ -343,6 +415,11 @@ int main( int argc, char* args[] )
 					case SDLK_DOWN:
 						//gCurrentTexture = gKeyPressTextures[KEY_PRESS_TEXTURE_DOWN];
 						downHeld = true;
+						break;
+
+					// general input
+					case SDLK_r:
+						respawnBallHeld = true;
 						break;
 					default:
 						//gCurrentTexture = gKeyPressTextures[KEY_PRESS_TEXTURE_DEFAULT];
@@ -371,6 +448,11 @@ int main( int argc, char* args[] )
 					downHeld = false;
 					//gCurrentTexture = gKeyPressTextures[KEY_PRESS_TEXTURE_DOWN];
 					break;
+
+				// general input
+				case SDLK_r:
+					respawnBallHeld = false;
+					break;
 				default:
 					//gCurrentTexture = gKeyPressTextures[KEY_PRESS_TEXTURE_DEFAULT];
 					break;
@@ -379,7 +461,16 @@ int main( int argc, char* args[] )
 		}
 
 
-		// 2. Update the game state
+		//// 2. Update the game state
+		// Move ball
+		//ballX = ballX + ballSpeedX;
+		//ballY = ballY + ballSpeedY;
+		//printf("ballspeedx, y (%f, %f) \n", ballSpeedX, ballSpeedY);
+		ballX = ballX + BALL_SPEED_SCALAR * ballDirection.x;
+		ballY = ballY + BALL_SPEED_SCALAR * ballDirection.y;
+
+
+		// Handle player input
 		if (wHeld)
 		{
 			leftPlayerPaddleY -= (PLAYER_PADDLE_SPEED * deltaTime);
@@ -398,6 +489,14 @@ int main( int argc, char* args[] )
 		if (downHeld)
 		{
 			rightPlayerPaddleY += PLAYER_PADDLE_SPEED * deltaTime;
+		}
+
+		/*if (respawnBallHeld) {
+			respawnBall(&ballX, &ballY, &ballSpeedX, &ballSpeedY);
+		}*/
+
+		if (respawnBallHeld) {
+			respawnBall(&ballX, &ballY, &ballDirection.x, &ballDirection.y);
 		}
 
 		// Clamp to boundaries
@@ -421,7 +520,9 @@ int main( int argc, char* args[] )
 			rightPlayerPaddleY = (SCREEN_HEIGHT - PLAYER_PADDLE_HEIGHT / 2);
 		}
 
-		// 3. Render the screen
+		//// 3. Render the screen
+		// Reset render draw color
+		SDL_SetRenderDrawColor(gRenderer, 0x00, 0x00, 0x00, 0xFF);
 
 		// Clear screen
 		SDL_RenderClear(gRenderer);
@@ -444,8 +545,8 @@ int main( int argc, char* args[] )
 		//SDL_SetRenderDrawColor(gRenderer, 0x00, 0x00, 0xFF, 0xFF);
 		//SDL_RenderDrawLine(gRenderer, 0, SCREEN_HEIGHT / 2, SCREEN_WIDTH, SCREEN_HEIGHT / 2);
 
-		// Draw a vertical line of black dots
-		SDL_SetRenderDrawColor(gRenderer, 0, 0, 0, 0xFF);
+		// Draw a vertical line of white dots
+		SDL_SetRenderDrawColor(gRenderer, 0xFF, 0xFF, 0xFF, 0xFF);
 		
 		for (int i = DIVIDER_BLOCK_HEIGHT; i < SCREEN_HEIGHT; i += (DIVIDER_BLOCK_HEIGHT*2))
 		{
@@ -456,12 +557,17 @@ int main( int argc, char* args[] )
 		// Draw player rectangles
 		// Player 1
 		SDL_Rect fillRect = { PLAYER_PADDLE_WIDTH, (int)leftPlayerPaddleY, DIVIDER_BLOCK_WIDTH, PLAYER_PADDLE_HEIGHT };
-		SDL_SetRenderDrawColor(gRenderer, 0x00, 0x00, 0x00, 0xFF);
+		SDL_SetRenderDrawColor(gRenderer, 0xFF, 0xFF, 0xFF, 0xFF);
 		renderRect(gRenderer, &fillRect);
 
 		// Player 2
 		fillRect = { SCREEN_WIDTH - PLAYER_PADDLE_WIDTH,(int)rightPlayerPaddleY, DIVIDER_BLOCK_WIDTH, PLAYER_PADDLE_HEIGHT };
-		SDL_SetRenderDrawColor(gRenderer, 0x00, 0x00, 0x00, 0xFF);
+		SDL_SetRenderDrawColor(gRenderer, 0xFF, 0xFF, 0xFF, 0xFF);
+		renderRect(gRenderer, &fillRect);
+
+		// Draw ball
+		fillRect = {(int)ballX, (int)ballY, 2 * DIVIDER_BLOCK_WIDTH, 2 * DIVIDER_BLOCK_HEIGHT};
+		SDL_SetRenderDrawColor(gRenderer, 0xFF, 0xFF, 0xFF, 0xFF);
 		renderRect(gRenderer, &fillRect);
 
 		// Update screen
