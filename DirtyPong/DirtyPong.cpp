@@ -40,6 +40,14 @@ struct Vector2 {
 	float x, y;
 };
 
+// misc constants
+const int DIVIDER_BLOCK_WIDTH = 10;
+const int DIVIDER_BLOCK_HEIGHT = DIVIDER_BLOCK_WIDTH;
+const int PLAYER_PADDLE_WIDTH = DIVIDER_BLOCK_WIDTH;
+const int PLAYER_PADDLE_HEIGHT = SCREEN_HEIGHT / 4;
+const float PLAYER_PADDLE_SPEED = 1000.0;
+const float PLACEHOLDER_DELTA_TIME = 1.0 / 144.0;
+
 //Starts up SDL and creates window
 bool init();
 
