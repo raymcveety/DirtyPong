@@ -13,19 +13,22 @@ and may not be redistributed without written permission.*/
 #include <time.h>
 #include <random>
 
-//Screen dimension constants
-const int SCREEN_WIDTH = 640;
-const int SCREEN_HEIGHT = 480;
+//Screen dimension constexprants
+constexpr int SCREEN_WIDTH = 640;
+constexpr int SCREEN_HEIGHT = 480;
 
-// misc constants
-const int DIVIDER_BLOCK_WIDTH = 10;
-const int DIVIDER_BLOCK_HEIGHT = DIVIDER_BLOCK_WIDTH;
-const int PLAYER_PADDLE_WIDTH = DIVIDER_BLOCK_WIDTH;
-const int PLAYER_PADDLE_HEIGHT = SCREEN_HEIGHT / 4;
-const float PLAYER_PADDLE_SPEED = 1000.0;
-const float PLACEHOLDER_DELTA_TIME = 1.0 / 144.0;
-const float STARTING_BALL_SPEED = 1.5;
-const float BALL_SPEED_SCALAR = 2.0;
+// misc constexprants
+constexpr int DIVIDER_BLOCK_WIDTH = 10;
+constexpr int DIVIDER_BLOCK_HEIGHT = DIVIDER_BLOCK_WIDTH;
+constexpr int PLAYER_PADDLE_WIDTH = DIVIDER_BLOCK_WIDTH;
+constexpr int PADDLE_MARGIN = 20;
+constexpr int BALL_WIDTH = DIVIDER_BLOCK_WIDTH * 2;
+constexpr int BALL_HEIGHT = DIVIDER_BLOCK_HEIGHT * 2;
+constexpr int PLAYER_PADDLE_HEIGHT = SCREEN_HEIGHT / 4;
+constexpr float PLAYER_PADDLE_SPEED = 1000.0;
+constexpr float PLACEHOLDER_DELTA_TIME = 1.0 / 144.0;
+constexpr float STARTING_BALL_SPEED = 1.5;
+constexpr float BALL_STARTING_SPEED_SCALAR = 2.0;
 
 // Struct for vector2 representation
 // for a project this small better learning
@@ -58,9 +61,9 @@ void renderRect(SDL_Renderer* renderer,
 Vector2 randomizeBallDirection();
 
 // Spawns a ball in the center of the screen with a randomized direction and speed
-void respawnBall(float* ballXptr, float* ballYptr, float* ballSpeedXPtr, float* ballSpeedYPtr);
+void respawnBall(bool isServe, float* ballSpeedScalarPtr, float* ballXptr, float* ballYptr, float* ballDirectionPtrX, float* ballDirectionPtrY);
 
-//Key press surfaces constants
+//Key press surfaces constexprants
 enum KeyPressTextures
 {
 	KEY_PRESS_TEXTURE_DEFAULT,
@@ -310,17 +313,22 @@ Vector2 randomizeBallDirection()
 		result.y = 1.0 - (((float)(rand() % 20) + 1.0) / 10.0);
 	} while ((abs(result.x) < 0.7) || (abs(result.y) > 0.5));
 
-	//return { resultX, resultY };
 	return result;
 }
 
-void respawnBall(float* ballXptr, float* ballYptr, float* ballSpeedXPtr, float* ballSpeedYPtr)
+void respawnBall(bool isServe, float* ballSpeedScalarPtr, float* ballXptr, float* ballYptr, float* ballDirectionPtrX, float* ballDirectionPtrY)
 {
 	*ballXptr = SCREEN_WIDTH / 2.0;
 	*ballYptr = SCREEN_HEIGHT / 2.0;
-	Vector2 randomBallDirection = randomizeBallDirection();
-	*ballSpeedXPtr = randomBallDirection.x;
-	*ballSpeedYPtr = randomBallDirection.y;
+	*ballSpeedScalarPtr = 0.0;
+
+	if (isServe)
+	{
+		Vector2 randomBallDirection = randomizeBallDirection();
+		*ballDirectionPtrX = randomBallDirection.x;
+		*ballDirectionPtrY = randomBallDirection.y;
+		*ballSpeedScalarPtr = BALL_STARTING_SPEED_SCALAR;
+	}
 }
 
 int main( int argc, char* args[] )
@@ -342,11 +350,14 @@ int main( int argc, char* args[] )
 	// Quit flag
 	bool quit = false;
 
-	//Event handler
+	//Event data structure
 	SDL_Event e;
 
 	//Set default current texture
 	gCurrentTexture = gKeyPressTextures[KEY_PRESS_TEXTURE_DEFAULT];
+
+	// Game state init
+	bool gameOver = false;
 
 	// Paddle state init
 	float leftPlayerPaddleY = SCREEN_HEIGHT / 2.0;
@@ -357,6 +368,7 @@ int main( int argc, char* args[] )
 	float ballY = SCREEN_HEIGHT / 2.0;
 	int xDirection = 1;
 	int yDirection = 1;
+	float ballSpeedScalar = BALL_STARTING_SPEED_SCALAR;
 
 	// Old code. Trying to randomize the starting position
 	/*float ballSpeedX = randomizeBallDirection();
@@ -466,9 +478,6 @@ int main( int argc, char* args[] )
 		//ballX = ballX + ballSpeedX;
 		//ballY = ballY + ballSpeedY;
 		//printf("ballspeedx, y (%f, %f) \n", ballSpeedX, ballSpeedY);
-		ballX = ballX + BALL_SPEED_SCALAR * ballDirection.x;
-		ballY = ballY + BALL_SPEED_SCALAR * ballDirection.y;
-
 
 		// Handle player input
 		if (wHeld)
@@ -491,14 +500,6 @@ int main( int argc, char* args[] )
 			rightPlayerPaddleY += PLAYER_PADDLE_SPEED * deltaTime;
 		}
 
-		/*if (respawnBallHeld) {
-			respawnBall(&ballX, &ballY, &ballSpeedX, &ballSpeedY);
-		}*/
-
-		if (respawnBallHeld) {
-			respawnBall(&ballX, &ballY, &ballDirection.x, &ballDirection.y);
-		}
-
 		// Clamp to boundaries
 		if (leftPlayerPaddleY <= PLAYER_PADDLE_HEIGHT / 2)
 		{
@@ -518,6 +519,60 @@ int main( int argc, char* args[] )
 		if (rightPlayerPaddleY >= (SCREEN_HEIGHT - PLAYER_PADDLE_HEIGHT / 2))
 		{
 			rightPlayerPaddleY = (SCREEN_HEIGHT - PLAYER_PADDLE_HEIGHT / 2);
+		}
+
+		// Move ball
+		ballX = ballX + ballSpeedScalar * ballDirection.x;
+		ballY = ballY + ballSpeedScalar * ballDirection.y;
+
+		// Check collision with paddles
+		// ball y check is if ball bottom edge is > top edge of paddle AND
+		// ball top edge < bottom edge of paddle, collision can occur
+		if (((ballX + BALL_WIDTH / 2.0) > (SCREEN_WIDTH - PADDLE_MARGIN - PLAYER_PADDLE_WIDTH/2.0)) 
+			&& ((ballY + BALL_HEIGHT/2.0) > (rightPlayerPaddleY - PLAYER_PADDLE_HEIGHT/2.0))
+				&& ((ballY - BALL_HEIGHT/2.0) < (rightPlayerPaddleY + PLAYER_PADDLE_HEIGHT/2.0)))
+		{
+			ballX = SCREEN_WIDTH - PADDLE_MARGIN - (PLAYER_PADDLE_WIDTH / 2.0) - (BALL_WIDTH / 2.0);
+			ballDirection.x *= -1;
+		}
+
+		if (((ballX - BALL_WIDTH / 2.0) < (PADDLE_MARGIN + PLAYER_PADDLE_WIDTH / 2.0))
+			&& ((ballY + BALL_HEIGHT / 2.0) > (leftPlayerPaddleY - PLAYER_PADDLE_HEIGHT / 2.0))
+			&& ((ballY - BALL_HEIGHT / 2.0) < (leftPlayerPaddleY + PLAYER_PADDLE_HEIGHT / 2.0)))
+		{
+			ballX = PADDLE_MARGIN + (PLAYER_PADDLE_WIDTH / 2.0) + (BALL_WIDTH / 2.0);
+			ballDirection.x *= -1;
+		}
+
+		// Clamp ball to screen borders
+		if ((ballX - BALL_WIDTH/2.0) < 0.0)
+		{
+			// Player 2 scores!!!
+			gameOver = true;
+			respawnBall(false, &ballSpeedScalar, &ballX, &ballY, &ballDirection.x, &ballDirection.y);
+		}
+		
+		if ((ballX + BALL_WIDTH/2.0) > SCREEN_WIDTH)
+		{
+			// Player 1 scores!!!
+			gameOver = true;
+			respawnBall(false, &ballSpeedScalar, &ballX, &ballY, &ballDirection.x, &ballDirection.y);
+		}
+
+		if ((ballY - BALL_HEIGHT/2.0) < 0.0)
+		{
+			ballY = 0.0 + BALL_HEIGHT/2.0;
+			ballDirection.y *= -1;
+		}
+
+		if ((ballY + BALL_HEIGHT/2.0) > SCREEN_HEIGHT)
+		{
+			ballY = SCREEN_HEIGHT - BALL_HEIGHT/2.0;
+			ballDirection.y *= -1;
+		}
+
+		if (respawnBallHeld && gameOver) {
+			respawnBall(gameOver, &ballSpeedScalar, &ballX, &ballY, &ballDirection.x, &ballDirection.y);
 		}
 
 		//// 3. Render the screen
@@ -556,12 +611,12 @@ int main( int argc, char* args[] )
 
 		// Draw player rectangles
 		// Player 1
-		SDL_Rect fillRect = { PLAYER_PADDLE_WIDTH, (int)leftPlayerPaddleY, DIVIDER_BLOCK_WIDTH, PLAYER_PADDLE_HEIGHT };
+		SDL_Rect fillRect = { PADDLE_MARGIN, (int)leftPlayerPaddleY, DIVIDER_BLOCK_WIDTH, PLAYER_PADDLE_HEIGHT };
 		SDL_SetRenderDrawColor(gRenderer, 0xFF, 0xFF, 0xFF, 0xFF);
 		renderRect(gRenderer, &fillRect);
 
 		// Player 2
-		fillRect = { SCREEN_WIDTH - PLAYER_PADDLE_WIDTH,(int)rightPlayerPaddleY, DIVIDER_BLOCK_WIDTH, PLAYER_PADDLE_HEIGHT };
+		fillRect = { SCREEN_WIDTH - PADDLE_MARGIN,(int)rightPlayerPaddleY, DIVIDER_BLOCK_WIDTH, PLAYER_PADDLE_HEIGHT };
 		SDL_SetRenderDrawColor(gRenderer, 0xFF, 0xFF, 0xFF, 0xFF);
 		renderRect(gRenderer, &fillRect);
 
