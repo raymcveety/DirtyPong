@@ -188,7 +188,7 @@ bool init()
 		return false;
 	}
 
-	//Get window surface
+	// Get window surface
 	gScreenSurface = SDL_GetWindowSurface(gWindow);
 	if (gScreenSurface == NULL)
 	{
@@ -196,12 +196,13 @@ bool init()
 		return false;
 	}
 
+	// Initialize TrueType font to texture library
 	if (TTF_Init() != 0)
 	{
 		printf("Could not initialize TTF library! TTF_Error: %s\n", TTF_GetError());
 	}
 
-	// init ScoreBoard
+	// Initialize init ScoreBoard
 	scoreBoard = new ScoreBoard;
 	scoreBoard->player1ScoreBoardTexture = NULL;
 	scoreBoard->player2ScoreBoardTexture = NULL;
@@ -212,49 +213,7 @@ bool init()
 bool loadMedia()
 {
 	bool success = true;
-	//Load default surface
-	//gKeyPressTextures[KEY_PRESS_TEXTURE_DEFAULT] = IMG_LoadTexture(gRenderer, "pngs/press.png");
-	
-	//// Question to return to, is it better to ! for these?
-	//if (gKeyPressTextures[KEY_PRESS_TEXTURE_DEFAULT] == NULL)
-	//{
-	//	printf("Failed to load default image!\n");
-	//	return false;
-	//}
 
-	////Load up surface
-	//gKeyPressTextures[KEY_PRESS_TEXTURE_UP] = IMG_LoadTexture(gRenderer, "pngs/up.png");
-	//if (gKeyPressTextures[KEY_PRESS_TEXTURE_UP] == NULL)
-	//{
-	//	printf("Failed to load up image!\n");
-	//	return false;
-	//}
-
-	////Load down surface
-	//gKeyPressTextures[KEY_PRESS_TEXTURE_DOWN] = IMG_LoadTexture(gRenderer, "pngs/down.png");
-	//if (gKeyPressTextures[KEY_PRESS_TEXTURE_DOWN] == NULL)
-	//{
-	//	printf("Failed to load down image!\n");
-	//	return false;
-	//}
-
-	////Load left surface
-	//gKeyPressTextures[KEY_PRESS_TEXTURE_LEFT] = IMG_LoadTexture(gRenderer, "pngs/left.png");
-	//if (gKeyPressTextures[KEY_PRESS_TEXTURE_LEFT] == NULL)
-	//{
-	//	printf("Failed to load left image!\n");
-	//	return false;
-	//}
-
-	////Load right surface
-	//gKeyPressTextures[KEY_PRESS_TEXTURE_RIGHT] = IMG_LoadTexture(gRenderer, "pngs/right.png");
-	//if (gKeyPressTextures[KEY_PRESS_TEXTURE_RIGHT] == NULL)
-	//{
-	//	printf("Failed to load right image!\n");
-	//	return false;
-	//}
-
-	//globalFont = TTF_OpenFont("./fonts/lazy.ttf", 28);
 	globalFont = TTF_OpenFont("./fonts/Archivo/ttf/Archivo-Bold.ttf", 28);
 
 	// Load global font
@@ -264,26 +223,9 @@ bool loadMedia()
 		return false;
 	}
 
-	// RenderText
-	//if (!loadFromRenderedText("THIS IS SOME RENDERED TEXT", textColor))
-	//{
-	//	printf("Could not loadFromRenderedText in loadMedia. Returning false");
-	//	return false;
-	//}
-
-	//if (scoreBoard->player1ScoreBoardTexture == NULL)
-	//{
-	//	printf("Unable to create texture from text surface. SDL_Error: %s", SDL_GetError());
-	//	return false;
-	//}
-
-	//if (loadFromRenderedText("Player 1: ", textColor))
-	//{
-	//	printf("Could not loadFromRenderedText in loadMedia. Returning false");
-	//	return false;
-	//}
 	freeTextTexture(scoreBoard->player1ScoreBoardTexture);
 	freeTextTexture(scoreBoard->player2ScoreBoardTexture);
+
 	scoreBoard->player1ScoreBoardWidth = 0;
 	scoreBoard->player1ScoreBoardHeight = 0;
 	scoreBoard->player1ScoreBoardTexture = loadFromRenderedText("0", textColor);
@@ -329,12 +271,6 @@ SDL_Texture* loadFromRenderedText(std::string textureText, SDL_Color textColor) 
 	//scoreBoard->player1ScoreBoardTexture = SDL_CreateTextureFromSurface(gRenderer, textSurface);
 	loadedTexture = SDL_CreateTextureFromSurface(gRenderer, gTextSurface);
 
-	//if (scoreBoard->player1ScoreBoardTexture == NULL)
-	//{
-	//	printf("Unable to create texture from text surface. SDL_Error: %s", SDL_GetError());
-	//	return false;
-	//}
-
 	SDL_FreeSurface(gTextSurface);
 
 	//return scoreBoard->player1ScoreBoardTexture != NULL;
@@ -370,25 +306,6 @@ SDL_Surface* loadSurface(std::string path)
 	return loadedSurface;
 }
 
-//void freeTextTexture() 
-//{
-//	if (scoreBoard->player1ScoreBoardTexture != NULL)
-//	{
-//		SDL_DestroyTexture(scoreBoard->player1ScoreBoardTexture);
-//		scoreBoard->player1ScoreBoardTexture = NULL;
-//		scoreBoard->player1ScoreBoardWidth = 0;
-//		scoreBoard->player1ScoreBoardHeight = 0;
-//	}
-//
-//	if (scoreBoard->player2ScoreBoardTexture != NULL)
-//	{
-//		SDL_DestroyTexture(scoreBoard->player2ScoreBoardTexture);
-//		scoreBoard->player2ScoreBoardTexture = NULL;
-//		scoreBoard->player2ScoreBoardWidth = 0;
-//		scoreBoard->player2ScoreBoardHeight = 0;
-//	}
-//}
-
 void freeTextTexture(SDL_Texture* textureToFree)
 {
 	if (textureToFree != NULL)
@@ -413,11 +330,6 @@ void close()
 		}
 	}
 
-	// gScreenSurface is owned by the window (returned by SDL_GetWindowSurface).
-	// The lesson here is taht you only free memory that you allocate
-	// So for the surfaces I allocate in loadMedia need me to free the memory, otherwise
-	// that data stays there. Please note: even though we don't own the memory allocated for gScreenSurface
-	// we still own the pointer 
 	// Do not call SDL_FreeSurface on it.
 	gScreenSurface = NULL;
 
@@ -461,20 +373,6 @@ void renderRect(SDL_Renderer* renderer,
 
 Vector2 randomizeBallDirection()
 {
-	/*float resultX; 
-	do
-	{
-		resultX = 1.0 - (((float)(rand() % 20) + 1.0)/10.0);
-		printf("result %f \n", resultX);
-	} while (abs(resultX) < 0.7);
-
-	float resultY;
-	do
-	{
-		resultY = 1.0 - (((float)(rand() % 20) + 1.0) / 10.0);
-		printf("result %f \n", resultY);
-	} while (abs(resultY) > 0.4);*/
-
 	Vector2 result;
 	do
 	{
@@ -540,14 +438,10 @@ int main( int argc, char* args[] )
 	float ballSpeedScalar = BALL_STARTING_SPEED_SCALAR;
 	int winner = 0;
 
-	// Old code. Trying to randomize the starting position
-	/*float ballSpeedX = randomizeBallDirection();
-	float ballSpeedY = randomizeBallDirection();*/
 	Vector2 ballDirection = randomizeBallDirection();
 
-
 	// Input state  init
-	// In a better game this should be a bitmask
+	// Improvement: make this a bit mask
 	bool upHeld = false;
 	bool downHeld = false;
 	bool wHeld = false;
@@ -561,14 +455,14 @@ int main( int argc, char* args[] )
 
 	currentGameState = PREGAME;
 
-	// temporarily starting in playing isolate memory leak
-	//currentGameState = PLAYING;
-
 	// Game Loop
 	while (!quit)
 	{
 		//// 1. Collect input
+		
+		// Delta time implemenation attempt to return to, leaving commented out for now
 		//int deltaTime = ts.tv_nsec
+		
 		// Handle events on queue
 		// SDL_PollEvent() returns 1 if there are any events in the queue, otherwise it returns 0.
 		while (SDL_PollEvent(&e) != 0)
@@ -587,23 +481,17 @@ int main( int argc, char* args[] )
 				{
 					// left player input
 					case SDLK_w:
-						//gCurrentTexture = gKeyPressTextures[KEY_PRESS_TEXTURE_LEFT];
 						wHeld = true;
 						break;
 					case SDLK_s:
-						//gCurrentTexture = gKeyPressTextures[KEY_PRESS_TEXTURE_RIGHT];
-						//leftPlayerPaddleY += PLAYER_PADDLE_SPEED*deltaTime;
 						sHeld = true;
 						break;
-					
 
 					// right player input
 					case SDLK_UP:
-						//gCurrentTexture = gKeyPressTextures[KEY_PRESS_TEXTURE_UP];
 						upHeld = true;
 						break;
 					case SDLK_DOWN:
-						//gCurrentTexture = gKeyPressTextures[KEY_PRESS_TEXTURE_DOWN];
 						downHeld = true;
 						break;
 
@@ -615,7 +503,6 @@ int main( int argc, char* args[] )
 					case SDLK_p:
 						startPressed = true;
 					default:
-						//gCurrentTexture = gKeyPressTextures[KEY_PRESS_TEXTURE_DEFAULT];
 						break;
 				}
 			} 
@@ -625,7 +512,6 @@ int main( int argc, char* args[] )
 				{
 					// left player input
 					case SDLK_w:
-						//gCurrentTexture = gKeyPressTextures[KEY_PRESS_TEXTURE_LEFT];
 						wHeld = false;
 						break;
 					case SDLK_s:
@@ -635,11 +521,9 @@ int main( int argc, char* args[] )
 					// right player input
 					case SDLK_UP:
 						upHeld = false;
-						//gCurrentTexture = gKeyPressTextures[KEY_PRESS_TEXTURE_UP];
 						break;
 					case SDLK_DOWN:
 						downHeld = false;
-						//gCurrentTexture = gKeyPressTextures[KEY_PRESS_TEXTURE_DOWN];
 						break;
 
 					// general input
@@ -650,7 +534,6 @@ int main( int argc, char* args[] )
 					case SDLK_p:
 						startPressed = false;
 					default:
-						//gCurrentTexture = gKeyPressTextures[KEY_PRESS_TEXTURE_DEFAULT];
 						break;
 				}
 			}
@@ -658,11 +541,7 @@ int main( int argc, char* args[] )
 
 
 		//// 2. Update the game state
-		// Move ball
-		//ballX = ballX + ballSpeedX;
-		//ballY = ballY + ballSpeedY;
-		//printf("ballspeedx, y (%f, %f) \n", ballSpeedX, ballSpeedY);
-
+		
 		// Handle player input
 		if (startPressed)
 		{
@@ -815,12 +694,6 @@ int main( int argc, char* args[] )
 			SDL_Texture* gameOverExplanationTexture = loadFromRenderedText("First player to 10 points wins", textColor);
 			SDL_Texture* howToStartTexture = loadFromRenderedText("Press p to start", textColor);
 
-			//SDL_Rect startScreenRenderQuad = { SCREEN_WIDTH - (scoreBoard->player1ScoreBoardWidth + BALL_WIDTH + 10.0), BALL_WIDTH, scoreBoard->player2ScoreBoardWidth, scoreBoard->player2ScoreBoardHeight };
-			//SDL_Rect startScreenRenderQuad = { 0.0, 0.0, SCREEN_WIDTH, SCREEN_HEIGHT/6.0 };
-			//SDL_Rect player1ControlsRenderQuad = { 0.0, SCREEN_HEIGHT / 6.0, SCREEN_WIDTH, SCREEN_HEIGHT / 12.0 };
-			//SDL_Rect player2ControlsRenderQuad = { 0.0, 2 * (SCREEN_HEIGHT / 6.0), SCREEN_WIDTH, SCREEN_HEIGHT / 12.0};
-			//SDL_Rect gameOverExplanationRenderQuad = { 0.0, 3 * (SCREEN_HEIGHT / 6.0), SCREEN_WIDTH, SCREEN_HEIGHT / 12.0};
-			//SDL_Rect howToStartRenderQuad = { 0.0, 4 * (SCREEN_HEIGHT / 6.0), SCREEN_WIDTH, SCREEN_HEIGHT / 12.0 };
 			SDL_Rect startScreenRenderQuad = { 20.0, 0.0, SCREEN_WIDTH - 40, SCREEN_HEIGHT / 6.0 };
 			SDL_Rect player1ControlsRenderQuad = { 20.0, 2 * (SCREEN_HEIGHT / 12.0), SCREEN_WIDTH - 40, SCREEN_HEIGHT / 12.0 };
 			SDL_Rect player2ControlsRenderQuad = { 20.0, 3 * (SCREEN_HEIGHT / 12.0), SCREEN_WIDTH - 40, SCREEN_HEIGHT / 12.0 };
@@ -845,21 +718,6 @@ int main( int argc, char* args[] )
 		{
 			// Render texture to screen
 			SDL_RenderCopy(gRenderer, gCurrentTexture, NULL, NULL);
-
-			// Top left corner of screen is 0,0 and bottom right corner is 640,480
-			// Render a filled quad
-			//SDL_Rect fillRect = { SCREEN_WIDTH / 4, SCREEN_HEIGHT / 4, SCREEN_WIDTH / 2, SCREEN_HEIGHT / 2 };
-			//SDL_SetRenderDrawColor(gRenderer, 0xFF, 0x00, 0x00, 0xFF);
-			//SDL_RenderFillRect(gRenderer, &fillRect);
-
-			//// Render a green outlined quad
-			//SDL_Rect outlineRect = { SCREEN_WIDTH / 6, SCREEN_HEIGHT / 6, SCREEN_WIDTH * 2 / 3, SCREEN_HEIGHT * 2 / 3 };
-			//SDL_SetRenderDrawColor(gRenderer, 0x00, 0xFF, 0x00, 0xFF);
-			//SDL_RenderDrawRect(gRenderer, &outlineRect);
-
-			//// Draw a blue horizontal line
-			//SDL_SetRenderDrawColor(gRenderer, 0x00, 0x00, 0xFF, 0xFF);
-			//SDL_RenderDrawLine(gRenderer, 0, SCREEN_HEIGHT / 2, SCREEN_WIDTH, SCREEN_HEIGHT / 2);
 
 			// Draw a vertical line of white dots
 			SDL_SetRenderDrawColor(gRenderer, 0xFF, 0xFF, 0xFF, 0xFF);
@@ -889,18 +747,10 @@ int main( int argc, char* args[] )
 			// Test texture
 			scoreBoard->player1ScoreBoardTexture = loadFromRenderedText(std::to_string(player1Score), textColor);
 			scoreBoard->player2ScoreBoardTexture = loadFromRenderedText(std::to_string(player2Score), textColor);
+
 			//Set rendering space and render to screen
-			//SDL_Rect renderQuad = { BALL_WIDTH, BALL_WIDTH, SCREEN_WIDTH, SCREEN_HEIGHT / 20.0 };
 			SDL_Rect player1ScoreBoardRenderQuad = { BALL_WIDTH + 10.0, BALL_WIDTH, scoreBoard->player1ScoreBoardWidth, scoreBoard->player1ScoreBoardHeight };
 			SDL_Rect player2ScoreBoardRenderQuad = { SCREEN_WIDTH - (scoreBoard->player1ScoreBoardWidth + BALL_WIDTH + 10.0), BALL_WIDTH, scoreBoard->player2ScoreBoardWidth, scoreBoard->player2ScoreBoardHeight };
-
-			//Set clip rendering dimensions
-			//if (clip != NULL)
-			//{
-			//	renderQuad.w = clip->w;
-			//	renderQuad.h = clip->h;
-			//	renderQuad.h = clip->h;
-			//}
 
 			if (ballReadyToServe)
 			{
@@ -928,12 +778,6 @@ int main( int argc, char* args[] )
 
 			SDL_Texture* playAgainTexture = loadFromRenderedText("Press p to play again!", textColor);
 
-			//SDL_Rect startScreenRenderQuad = { SCREEN_WIDTH - (scoreBoard->player1ScoreBoardWidth + BALL_WIDTH + 10.0), BALL_WIDTH, scoreBoard->player2ScoreBoardWidth, scoreBoard->player2ScoreBoardHeight };
-			//SDL_Rect startScreenRenderQuad = { 0.0, 0.0, SCREEN_WIDTH, SCREEN_HEIGHT/6.0 };
-			//SDL_Rect player1ControlsRenderQuad = { 0.0, SCREEN_HEIGHT / 6.0, SCREEN_WIDTH, SCREEN_HEIGHT / 12.0 };
-			//SDL_Rect player2ControlsRenderQuad = { 0.0, 2 * (SCREEN_HEIGHT / 6.0), SCREEN_WIDTH, SCREEN_HEIGHT / 12.0};
-			//SDL_Rect gameOverExplanationRenderQuad = { 0.0, 3 * (SCREEN_HEIGHT / 6.0), SCREEN_WIDTH, SCREEN_HEIGHT / 12.0};
-			//SDL_Rect howToStartRenderQuad = { 0.0, 4 * (SCREEN_HEIGHT / 6.0), SCREEN_WIDTH, SCREEN_HEIGHT / 12.0 };
 			SDL_Rect winnerAnnouncementrQuad = { 20.0, SCREEN_HEIGHT / 6.0, SCREEN_WIDTH - 40, SCREEN_HEIGHT / 6.0};
 			SDL_Rect playAgainQuad = { 20.0, 2 * (SCREEN_HEIGHT / 6.0), SCREEN_WIDTH - 40, SCREEN_HEIGHT / 6.0 };
 
@@ -955,8 +799,6 @@ int main( int argc, char* args[] )
 			freeTextTexture(winner2AnnouncementTexture);
 			freeTextTexture(playAgainTexture);
 		}
-
-		//SDL_RenderCopyEx(gRenderer, mTexture, NULL, NULL, 0, NULL, SDL_FLIP_NONE);
 
 		// Update screen
 		SDL_RenderPresent(gRenderer);
