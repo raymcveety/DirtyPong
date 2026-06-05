@@ -7,6 +7,7 @@ and may not be redistributed without written permission.*/
 //Using SDL and standard IO
 #include <SDL.h>
 #include <SDL_image.h>
+#include <SDL_ttf.h>
 #include <stdio.h>
 #include <string>
 #include <cmath>
@@ -16,6 +17,7 @@ and may not be redistributed without written permission.*/
 //Screen dimension constexprants
 constexpr int SCREEN_WIDTH = 640;
 constexpr int SCREEN_HEIGHT = 480;
+constexpr int MAX_POINTS = 10;
 
 // misc constexprants
 constexpr int DIVIDER_BLOCK_WIDTH = 10;
@@ -30,23 +32,18 @@ constexpr float PLACEHOLDER_DELTA_TIME = 1.0 / 144.0;
 constexpr float STARTING_BALL_SPEED = 1.5;
 constexpr float BALL_STARTING_SPEED_SCALAR = 2.0;
 
+constexpr float LEFT_PLAYER_PADDLE_Y_START = SCREEN_HEIGHT / 2.0;
+constexpr float RIGHT_PLAYER_PADDLE_Y_START = SCREEN_HEIGHT / 2.0;
+
 // Struct for vector2 representation
 // for a project this small better learning
 // experience to use my own data type. From
 // research an open source alternative is OpenGL
-// math library. (https://github.com/g-truc/glm link
+// math library. (cannot find link anymore, got replaced with a github link, removing for now)
 // provided 3/21/2026, not verified since
 struct Vector2 {
 	float x, y;
 };
-
-// misc constants
-const int DIVIDER_BLOCK_WIDTH = 10;
-const int DIVIDER_BLOCK_HEIGHT = DIVIDER_BLOCK_WIDTH;
-const int PLAYER_PADDLE_WIDTH = DIVIDER_BLOCK_WIDTH;
-const int PLAYER_PADDLE_HEIGHT = SCREEN_HEIGHT / 4;
-const float PLAYER_PADDLE_SPEED = 1000.0;
-const float PLACEHOLDER_DELTA_TIME = 1.0 / 144.0;
 
 //Starts up SDL and creates window
 bool init();
@@ -56,6 +53,10 @@ bool loadMedia();
 
 //Frees media and shuts down SDL
 void close();
+
+// Frees text based textures
+//void freeTextTexture();
+void freeTextTexture(SDL_Texture*);
 
 //Loads individual image
 SDL_Surface* loadSurface(std::string path);
@@ -99,6 +100,38 @@ SDL_Texture* gKeyPressTextures[KEY_PRESS_TEXTURE_TOTAL] = {};
 
 SDL_Rect stretchRect;
 
+TTF_Font* globalFont;
+
+struct ScoreBoard 
+{
+	SDL_Texture* player1ScoreBoardTexture;
+	SDL_Texture* player2ScoreBoardTexture;
+
+	int player1ScoreBoardWidth;
+	int player1ScoreBoardHeight;
+
+	int player2ScoreBoardWidth;
+	int player2ScoreBoardHeight;
+};
+
+ScoreBoard* scoreBoard;
+
+SDL_Texture* loadFromRenderedText(std::string textureText, SDL_Color textColor);
+SDL_Surface* gTextSurface;
+SDL_Color textColor = { 255, 255, 255 };
+
+SDL_Texture* startScreenTexture;
+
+enum GameState
+{
+	PREGAME,
+	PAUSED,
+	PLAYING,
+	SERVING,
+	GAMEOVER
+};
+
+GameState currentGameState;
 
 bool init()
 {
@@ -162,12 +195,23 @@ bool init()
 		printf("Could not get window surface! SDL_Error: %s\n", SDL_GetError());
 		return false;
 	}
+
+	if (TTF_Init() != 0)
+	{
+		printf("Could not initialize TTF library! TTF_Error: %s\n", TTF_GetError());
+	}
+
+	// init ScoreBoard
+	scoreBoard = new ScoreBoard;
+	scoreBoard->player1ScoreBoardTexture = NULL;
+	scoreBoard->player2ScoreBoardTexture = NULL;
 	
 	return true;
 }
 
 bool loadMedia()
 {
+	bool success = true;
 	//Load default surface
 	//gKeyPressTextures[KEY_PRESS_TEXTURE_DEFAULT] = IMG_LoadTexture(gRenderer, "pngs/press.png");
 	
@@ -210,7 +254,91 @@ bool loadMedia()
 	//	return false;
 	//}
 
+	//globalFont = TTF_OpenFont("./fonts/lazy.ttf", 28);
+	globalFont = TTF_OpenFont("./fonts/Archivo/ttf/Archivo-Bold.ttf", 28);
+
+	// Load global font
+	if (globalFont == NULL)
+	{
+		printf("Could not load global font in loadMedia. TTF_Error: '%s'", TTF_GetError());
+		return false;
+	}
+
+	// RenderText
+	//if (!loadFromRenderedText("THIS IS SOME RENDERED TEXT", textColor))
+	//{
+	//	printf("Could not loadFromRenderedText in loadMedia. Returning false");
+	//	return false;
+	//}
+
+	//if (scoreBoard->player1ScoreBoardTexture == NULL)
+	//{
+	//	printf("Unable to create texture from text surface. SDL_Error: %s", SDL_GetError());
+	//	return false;
+	//}
+
+	//if (loadFromRenderedText("Player 1: ", textColor))
+	//{
+	//	printf("Could not loadFromRenderedText in loadMedia. Returning false");
+	//	return false;
+	//}
+	freeTextTexture(scoreBoard->player1ScoreBoardTexture);
+	freeTextTexture(scoreBoard->player2ScoreBoardTexture);
+	scoreBoard->player1ScoreBoardWidth = 0;
+	scoreBoard->player1ScoreBoardHeight = 0;
+	scoreBoard->player1ScoreBoardTexture = loadFromRenderedText("0", textColor);
+
+	if (scoreBoard->player1ScoreBoardTexture == NULL) {
+		printf("Could not loadFromRenderedText in loadMedia. Returning false");
+		return false;
+	}
+	
+	scoreBoard->player1ScoreBoardWidth = gTextSurface->w;
+	scoreBoard->player1ScoreBoardHeight = gTextSurface->h;
+
+	SDL_FreeSurface(gTextSurface);
+
+	scoreBoard->player2ScoreBoardTexture = loadFromRenderedText("0", textColor);
+
+	if (scoreBoard->player2ScoreBoardTexture == NULL) {
+		printf("Could not loadFromRenderedText in loadMedia. Returning false");
+		return false;
+	}
+
+	scoreBoard->player2ScoreBoardWidth = gTextSurface->w;
+	scoreBoard->player2ScoreBoardHeight = gTextSurface->h;
+
+	SDL_FreeSurface(gTextSurface);
+
 	return true;
+}
+
+SDL_Texture* loadFromRenderedText(std::string textureText, SDL_Color textColor) {
+
+	//freeTextTexture();
+	SDL_Texture* loadedTexture;
+
+	gTextSurface = TTF_RenderText_Solid(globalFont, textureText.c_str(), textColor);
+
+	if (gTextSurface == NULL)
+	{
+		printf("Unable to load text as surface from the string '%s', TTF_Error: '%s'", textureText.c_str(), TTF_GetError());
+		return NULL;
+	}
+
+	//scoreBoard->player1ScoreBoardTexture = SDL_CreateTextureFromSurface(gRenderer, textSurface);
+	loadedTexture = SDL_CreateTextureFromSurface(gRenderer, gTextSurface);
+
+	//if (scoreBoard->player1ScoreBoardTexture == NULL)
+	//{
+	//	printf("Unable to create texture from text surface. SDL_Error: %s", SDL_GetError());
+	//	return false;
+	//}
+
+	SDL_FreeSurface(gTextSurface);
+
+	//return scoreBoard->player1ScoreBoardTexture != NULL;
+	return loadedTexture;
 }
 
 SDL_Surface* loadSurface(std::string path)
@@ -241,6 +369,35 @@ SDL_Surface* loadSurface(std::string path)
 
 	return loadedSurface;
 }
+
+//void freeTextTexture() 
+//{
+//	if (scoreBoard->player1ScoreBoardTexture != NULL)
+//	{
+//		SDL_DestroyTexture(scoreBoard->player1ScoreBoardTexture);
+//		scoreBoard->player1ScoreBoardTexture = NULL;
+//		scoreBoard->player1ScoreBoardWidth = 0;
+//		scoreBoard->player1ScoreBoardHeight = 0;
+//	}
+//
+//	if (scoreBoard->player2ScoreBoardTexture != NULL)
+//	{
+//		SDL_DestroyTexture(scoreBoard->player2ScoreBoardTexture);
+//		scoreBoard->player2ScoreBoardTexture = NULL;
+//		scoreBoard->player2ScoreBoardWidth = 0;
+//		scoreBoard->player2ScoreBoardHeight = 0;
+//	}
+//}
+
+void freeTextTexture(SDL_Texture* textureToFree)
+{
+	if (textureToFree != NULL)
+	{
+		SDL_DestroyTexture(textureToFree);
+		textureToFree = NULL;
+	}
+}
+
 
 void close()
 {
@@ -277,6 +434,10 @@ void close()
 		SDL_DestroyWindow(gWindow);
 		gWindow = NULL;
 	}
+
+	//Free global font
+	TTF_CloseFont(globalFont);
+	globalFont = NULL;
 
 	//Quit SDL subsystems
 	IMG_Quit();
@@ -365,11 +526,11 @@ int main( int argc, char* args[] )
 	gCurrentTexture = gKeyPressTextures[KEY_PRESS_TEXTURE_DEFAULT];
 
 	// Game state init
-	bool gameOver = false;
+	bool ballReadyToServe = false;
 
 	// Paddle state init
-	float leftPlayerPaddleY = SCREEN_HEIGHT / 2.0;
-	float rightPlayerPaddleY = SCREEN_HEIGHT / 2.0;
+	float leftPlayerPaddleY = LEFT_PLAYER_PADDLE_Y_START;
+	float rightPlayerPaddleY = RIGHT_PLAYER_PADDLE_Y_START;
 
 	// Ball state init
 	float ballX = SCREEN_WIDTH / 2.0;
@@ -377,6 +538,7 @@ int main( int argc, char* args[] )
 	int xDirection = 1;
 	int yDirection = 1;
 	float ballSpeedScalar = BALL_STARTING_SPEED_SCALAR;
+	int winner = 0;
 
 	// Old code. Trying to randomize the starting position
 	/*float ballSpeedX = randomizeBallDirection();
@@ -391,8 +553,16 @@ int main( int argc, char* args[] )
 	bool wHeld = false;
 	bool sHeld = false;
 	bool respawnBallHeld = false;
+	bool startPressed = false;
+	int player1Score = 0;
+	int player2Score = 0;
 
 	float deltaTime = PLACEHOLDER_DELTA_TIME;
+
+	currentGameState = PREGAME;
+
+	// temporarily starting in playing isolate memory leak
+	//currentGameState = PLAYING;
 
 	// Game Loop
 	while (!quit)
@@ -441,6 +611,9 @@ int main( int argc, char* args[] )
 					case SDLK_r:
 						respawnBallHeld = true;
 						break;
+
+					case SDLK_p:
+						startPressed = true;
 					default:
 						//gCurrentTexture = gKeyPressTextures[KEY_PRESS_TEXTURE_DEFAULT];
 						break;
@@ -451,31 +624,34 @@ int main( int argc, char* args[] )
 				switch (e.key.keysym.sym)
 				{
 					// left player input
-				case SDLK_w:
-					//gCurrentTexture = gKeyPressTextures[KEY_PRESS_TEXTURE_LEFT];
-					wHeld = false;
-					break;
-				case SDLK_s:
-					sHeld = false;
-					break;
+					case SDLK_w:
+						//gCurrentTexture = gKeyPressTextures[KEY_PRESS_TEXTURE_LEFT];
+						wHeld = false;
+						break;
+					case SDLK_s:
+						sHeld = false;
+						break;
 
 					// right player input
-				case SDLK_UP:
-					upHeld = false;
-					//gCurrentTexture = gKeyPressTextures[KEY_PRESS_TEXTURE_UP];
-					break;
-				case SDLK_DOWN:
-					downHeld = false;
-					//gCurrentTexture = gKeyPressTextures[KEY_PRESS_TEXTURE_DOWN];
-					break;
+					case SDLK_UP:
+						upHeld = false;
+						//gCurrentTexture = gKeyPressTextures[KEY_PRESS_TEXTURE_UP];
+						break;
+					case SDLK_DOWN:
+						downHeld = false;
+						//gCurrentTexture = gKeyPressTextures[KEY_PRESS_TEXTURE_DOWN];
+						break;
 
-				// general input
-				case SDLK_r:
-					respawnBallHeld = false;
-					break;
-				default:
-					//gCurrentTexture = gKeyPressTextures[KEY_PRESS_TEXTURE_DEFAULT];
-					break;
+					// general input
+					case SDLK_r:
+						respawnBallHeld = false;
+						break;
+
+					case SDLK_p:
+						startPressed = false;
+					default:
+						//gCurrentTexture = gKeyPressTextures[KEY_PRESS_TEXTURE_DEFAULT];
+						break;
 				}
 			}
 		}
@@ -488,50 +664,67 @@ int main( int argc, char* args[] )
 		//printf("ballspeedx, y (%f, %f) \n", ballSpeedX, ballSpeedY);
 
 		// Handle player input
-		if (wHeld)
+		if (startPressed)
+		{
+			// Reset game state
+			if (currentGameState == GAMEOVER)
+			{
+				player1Score = 0;
+				player2Score = 0;
+			}
+			if (currentGameState != SERVING)
+			{
+				currentGameState = PLAYING;
+			}
+		}
+
+		if (currentGameState == PLAYING && wHeld)
 		{
 			leftPlayerPaddleY -= (PLAYER_PADDLE_SPEED * deltaTime);
 		}
 
-		if (sHeld && (leftPlayerPaddleY <= (SCREEN_HEIGHT - PLAYER_PADDLE_HEIGHT / 2)))
+		if (currentGameState == PLAYING && sHeld && (leftPlayerPaddleY <= (SCREEN_HEIGHT - PLAYER_PADDLE_HEIGHT / 2)))
 		{
 			leftPlayerPaddleY += PLAYER_PADDLE_SPEED*deltaTime;
 		}
 
-		if (upHeld)
+		if (currentGameState == PLAYING && upHeld)
 		{
 			rightPlayerPaddleY -= (PLAYER_PADDLE_SPEED * deltaTime);
 		}
 
-		if (downHeld)
+		if (currentGameState == PLAYING && downHeld)
 		{
 			rightPlayerPaddleY += PLAYER_PADDLE_SPEED * deltaTime;
 		}
 
 		// Clamp to boundaries
-		if (leftPlayerPaddleY <= PLAYER_PADDLE_HEIGHT / 2)
+		if (currentGameState == PLAYING && leftPlayerPaddleY <= PLAYER_PADDLE_HEIGHT / 2)
 		{
 			leftPlayerPaddleY = PLAYER_PADDLE_HEIGHT / 2;
 		}
 
-		if (leftPlayerPaddleY >= (SCREEN_HEIGHT - PLAYER_PADDLE_HEIGHT / 2))
+		if (currentGameState == PLAYING && leftPlayerPaddleY >= (SCREEN_HEIGHT - PLAYER_PADDLE_HEIGHT / 2))
 		{
 			leftPlayerPaddleY = (SCREEN_HEIGHT - PLAYER_PADDLE_HEIGHT / 2);
 		}
 
-		if (rightPlayerPaddleY <= PLAYER_PADDLE_HEIGHT / 2)
+		if (currentGameState == PLAYING && rightPlayerPaddleY <= PLAYER_PADDLE_HEIGHT / 2)
 		{
 			rightPlayerPaddleY = PLAYER_PADDLE_HEIGHT / 2;
 		}
 
-		if (rightPlayerPaddleY >= (SCREEN_HEIGHT - PLAYER_PADDLE_HEIGHT / 2))
+		if (currentGameState == PLAYING && rightPlayerPaddleY >= (SCREEN_HEIGHT - PLAYER_PADDLE_HEIGHT / 2))
 		{
 			rightPlayerPaddleY = (SCREEN_HEIGHT - PLAYER_PADDLE_HEIGHT / 2);
 		}
 
 		// Move ball
-		ballX = ballX + ballSpeedScalar * ballDirection.x;
-		ballY = ballY + ballSpeedScalar * ballDirection.y;
+		if (currentGameState == PLAYING) 
+		{
+			ballX = ballX + ballSpeedScalar * ballDirection.x;
+			ballY = ballY + ballSpeedScalar * ballDirection.y;
+		}
 
 		// Check collision with paddles
 		// ball y check is if ball bottom edge is > top edge of paddle AND
@@ -556,14 +749,22 @@ int main( int argc, char* args[] )
 		if ((ballX - BALL_WIDTH/2.0) < 0.0)
 		{
 			// Player 2 scores!!!
-			gameOver = true;
+			player2Score++;
+			ballReadyToServe = true;
+			leftPlayerPaddleY = LEFT_PLAYER_PADDLE_Y_START;
+			rightPlayerPaddleY = RIGHT_PLAYER_PADDLE_Y_START;
+			currentGameState = SERVING;
 			respawnBall(false, &ballSpeedScalar, &ballX, &ballY, &ballDirection.x, &ballDirection.y);
 		}
 		
 		if ((ballX + BALL_WIDTH/2.0) > SCREEN_WIDTH)
 		{
 			// Player 1 scores!!!
-			gameOver = true;
+			player1Score++;
+			ballReadyToServe = true;
+			leftPlayerPaddleY = LEFT_PLAYER_PADDLE_Y_START;
+			rightPlayerPaddleY = RIGHT_PLAYER_PADDLE_Y_START;
+			currentGameState = SERVING;
 			respawnBall(false, &ballSpeedScalar, &ballX, &ballY, &ballDirection.x, &ballDirection.y);
 		}
 
@@ -579,59 +780,183 @@ int main( int argc, char* args[] )
 			ballDirection.y *= -1;
 		}
 
-		if (respawnBallHeld && gameOver) {
-			respawnBall(gameOver, &ballSpeedScalar, &ballX, &ballY, &ballDirection.x, &ballDirection.y);
+		if (respawnBallHeld && ballReadyToServe) {
+			respawnBall(ballReadyToServe, &ballSpeedScalar, &ballX, &ballY, &ballDirection.x, &ballDirection.y);
+			currentGameState = PLAYING;
+			ballReadyToServe = false;
+		}
+
+		if (player1Score >= MAX_POINTS)
+		{
+			currentGameState = GAMEOVER;
+			winner = 1;
+		}
+
+		if (player2Score >= MAX_POINTS)
+		{
+			currentGameState = GAMEOVER;
+			winner = 2;
 		}
 
 		//// 3. Render the screen
 		// Reset render draw color
 		SDL_SetRenderDrawColor(gRenderer, 0x00, 0x00, 0x00, 0xFF);
-
 		// Clear screen
 		SDL_RenderClear(gRenderer);
 
-		// Render texture to screen
-		SDL_RenderCopy(gRenderer, gCurrentTexture, NULL, NULL);
+		if (currentGameState == PREGAME)
+		{ 
+			SDL_RenderCopy(gRenderer, gCurrentTexture, NULL, NULL);
 
-		// Top left corner of screen is 0,0 and bottom right corner is 640,480
-		// Render a filled quad
-		//SDL_Rect fillRect = { SCREEN_WIDTH / 4, SCREEN_HEIGHT / 4, SCREEN_WIDTH / 2, SCREEN_HEIGHT / 2 };
-		//SDL_SetRenderDrawColor(gRenderer, 0xFF, 0x00, 0x00, 0xFF);
-		//SDL_RenderFillRect(gRenderer, &fillRect);
+			// Make start screen texture
+			startScreenTexture = loadFromRenderedText("DIRTY PONG", textColor);
+			SDL_Texture* player1ControlsTexture = loadFromRenderedText("Player 1: w, s to move left paddle", textColor);
+			SDL_Texture* player2ControlsTexture = loadFromRenderedText("Player 2:  up and down arrows to move right paddle", textColor);
+			SDL_Texture* gameOverExplanationTexture = loadFromRenderedText("First player to 10 points wins", textColor);
+			SDL_Texture* howToStartTexture = loadFromRenderedText("Press p to start", textColor);
 
-		//// Render a green outlined quad
-		//SDL_Rect outlineRect = { SCREEN_WIDTH / 6, SCREEN_HEIGHT / 6, SCREEN_WIDTH * 2 / 3, SCREEN_HEIGHT * 2 / 3 };
-		//SDL_SetRenderDrawColor(gRenderer, 0x00, 0xFF, 0x00, 0xFF);
-		//SDL_RenderDrawRect(gRenderer, &outlineRect);
+			//SDL_Rect startScreenRenderQuad = { SCREEN_WIDTH - (scoreBoard->player1ScoreBoardWidth + BALL_WIDTH + 10.0), BALL_WIDTH, scoreBoard->player2ScoreBoardWidth, scoreBoard->player2ScoreBoardHeight };
+			//SDL_Rect startScreenRenderQuad = { 0.0, 0.0, SCREEN_WIDTH, SCREEN_HEIGHT/6.0 };
+			//SDL_Rect player1ControlsRenderQuad = { 0.0, SCREEN_HEIGHT / 6.0, SCREEN_WIDTH, SCREEN_HEIGHT / 12.0 };
+			//SDL_Rect player2ControlsRenderQuad = { 0.0, 2 * (SCREEN_HEIGHT / 6.0), SCREEN_WIDTH, SCREEN_HEIGHT / 12.0};
+			//SDL_Rect gameOverExplanationRenderQuad = { 0.0, 3 * (SCREEN_HEIGHT / 6.0), SCREEN_WIDTH, SCREEN_HEIGHT / 12.0};
+			//SDL_Rect howToStartRenderQuad = { 0.0, 4 * (SCREEN_HEIGHT / 6.0), SCREEN_WIDTH, SCREEN_HEIGHT / 12.0 };
+			SDL_Rect startScreenRenderQuad = { 20.0, 0.0, SCREEN_WIDTH - 40, SCREEN_HEIGHT / 6.0 };
+			SDL_Rect player1ControlsRenderQuad = { 20.0, 2 * (SCREEN_HEIGHT / 12.0), SCREEN_WIDTH - 40, SCREEN_HEIGHT / 12.0 };
+			SDL_Rect player2ControlsRenderQuad = { 20.0, 3 * (SCREEN_HEIGHT / 12.0), SCREEN_WIDTH - 40, SCREEN_HEIGHT / 12.0 };
+			SDL_Rect gameOverExplanationRenderQuad = { 20.0, 4 * (SCREEN_HEIGHT / 12.0), SCREEN_WIDTH - 40, SCREEN_HEIGHT / 12.0 };
+			SDL_Rect howToStartRenderQuad = { 20.0, 5 * (SCREEN_HEIGHT / 12.0), SCREEN_WIDTH - 40, SCREEN_HEIGHT / 12.0 };
 
-		//// Draw a blue horizontal line
-		//SDL_SetRenderDrawColor(gRenderer, 0x00, 0x00, 0xFF, 0xFF);
-		//SDL_RenderDrawLine(gRenderer, 0, SCREEN_HEIGHT / 2, SCREEN_WIDTH, SCREEN_HEIGHT / 2);
+			//Render start menu to screen
+			SDL_RenderCopyEx(gRenderer, startScreenTexture, NULL, &startScreenRenderQuad, 0, NULL, SDL_FLIP_NONE);
+			SDL_RenderCopyEx(gRenderer, player1ControlsTexture, NULL, &player1ControlsRenderQuad, 0, NULL, SDL_FLIP_NONE);
+			SDL_RenderCopyEx(gRenderer, player2ControlsTexture, NULL, &player2ControlsRenderQuad, 0, NULL, SDL_FLIP_NONE);
+			SDL_RenderCopyEx(gRenderer, gameOverExplanationTexture, NULL, &gameOverExplanationRenderQuad, 0, NULL, SDL_FLIP_NONE);
+			SDL_RenderCopyEx(gRenderer, howToStartTexture, NULL, &howToStartRenderQuad, 0, NULL, SDL_FLIP_NONE);
 
-		// Draw a vertical line of white dots
-		SDL_SetRenderDrawColor(gRenderer, 0xFF, 0xFF, 0xFF, 0xFF);
-		
-		for (int i = DIVIDER_BLOCK_HEIGHT; i < SCREEN_HEIGHT; i += (DIVIDER_BLOCK_HEIGHT*2))
+			// Free texture memory
+			freeTextTexture(startScreenTexture);
+			freeTextTexture(player1ControlsTexture);
+			freeTextTexture(player2ControlsTexture);
+			freeTextTexture(gameOverExplanationTexture);
+			freeTextTexture(howToStartTexture);
+		}
+		else if (currentGameState == PLAYING || currentGameState == SERVING) 
 		{
-			SDL_Rect dotRect = { SCREEN_WIDTH / 2, i, DIVIDER_BLOCK_WIDTH, DIVIDER_BLOCK_HEIGHT };
-			renderRect(gRenderer, &dotRect);
+			// Render texture to screen
+			SDL_RenderCopy(gRenderer, gCurrentTexture, NULL, NULL);
+
+			// Top left corner of screen is 0,0 and bottom right corner is 640,480
+			// Render a filled quad
+			//SDL_Rect fillRect = { SCREEN_WIDTH / 4, SCREEN_HEIGHT / 4, SCREEN_WIDTH / 2, SCREEN_HEIGHT / 2 };
+			//SDL_SetRenderDrawColor(gRenderer, 0xFF, 0x00, 0x00, 0xFF);
+			//SDL_RenderFillRect(gRenderer, &fillRect);
+
+			//// Render a green outlined quad
+			//SDL_Rect outlineRect = { SCREEN_WIDTH / 6, SCREEN_HEIGHT / 6, SCREEN_WIDTH * 2 / 3, SCREEN_HEIGHT * 2 / 3 };
+			//SDL_SetRenderDrawColor(gRenderer, 0x00, 0xFF, 0x00, 0xFF);
+			//SDL_RenderDrawRect(gRenderer, &outlineRect);
+
+			//// Draw a blue horizontal line
+			//SDL_SetRenderDrawColor(gRenderer, 0x00, 0x00, 0xFF, 0xFF);
+			//SDL_RenderDrawLine(gRenderer, 0, SCREEN_HEIGHT / 2, SCREEN_WIDTH, SCREEN_HEIGHT / 2);
+
+			// Draw a vertical line of white dots
+			SDL_SetRenderDrawColor(gRenderer, 0xFF, 0xFF, 0xFF, 0xFF);
+
+			for (int i = DIVIDER_BLOCK_HEIGHT; i < SCREEN_HEIGHT; i += (DIVIDER_BLOCK_HEIGHT * 2))
+			{
+				SDL_Rect dotRect = { SCREEN_WIDTH / 2, i, DIVIDER_BLOCK_WIDTH, DIVIDER_BLOCK_HEIGHT };
+				renderRect(gRenderer, &dotRect);
+			}
+
+			// Draw player rectangles
+			// Player 1
+			SDL_Rect fillRect = { PADDLE_MARGIN, (int)leftPlayerPaddleY, DIVIDER_BLOCK_WIDTH, PLAYER_PADDLE_HEIGHT };
+			SDL_SetRenderDrawColor(gRenderer, 0xFF, 0xFF, 0xFF, 0xFF);
+			renderRect(gRenderer, &fillRect);
+
+			// Player 2
+			fillRect = { SCREEN_WIDTH - PADDLE_MARGIN,(int)rightPlayerPaddleY, DIVIDER_BLOCK_WIDTH, PLAYER_PADDLE_HEIGHT };
+			SDL_SetRenderDrawColor(gRenderer, 0xFF, 0xFF, 0xFF, 0xFF);
+			renderRect(gRenderer, &fillRect);
+
+			// Draw ball
+			fillRect = { (int)ballX, (int)ballY, 2 * DIVIDER_BLOCK_WIDTH, 2 * DIVIDER_BLOCK_HEIGHT };
+			SDL_SetRenderDrawColor(gRenderer, 0xFF, 0xFF, 0xFF, 0xFF);
+			renderRect(gRenderer, &fillRect);
+
+			// Test texture
+			scoreBoard->player1ScoreBoardTexture = loadFromRenderedText(std::to_string(player1Score), textColor);
+			scoreBoard->player2ScoreBoardTexture = loadFromRenderedText(std::to_string(player2Score), textColor);
+			//Set rendering space and render to screen
+			//SDL_Rect renderQuad = { BALL_WIDTH, BALL_WIDTH, SCREEN_WIDTH, SCREEN_HEIGHT / 20.0 };
+			SDL_Rect player1ScoreBoardRenderQuad = { BALL_WIDTH + 10.0, BALL_WIDTH, scoreBoard->player1ScoreBoardWidth, scoreBoard->player1ScoreBoardHeight };
+			SDL_Rect player2ScoreBoardRenderQuad = { SCREEN_WIDTH - (scoreBoard->player1ScoreBoardWidth + BALL_WIDTH + 10.0), BALL_WIDTH, scoreBoard->player2ScoreBoardWidth, scoreBoard->player2ScoreBoardHeight };
+
+			//Set clip rendering dimensions
+			//if (clip != NULL)
+			//{
+			//	renderQuad.w = clip->w;
+			//	renderQuad.h = clip->h;
+			//	renderQuad.h = clip->h;
+			//}
+
+			if (ballReadyToServe)
+			{
+				// Make start screen texture
+				SDL_Texture* readyToServeTexture = loadFromRenderedText("Press r to serve the ball", textColor);
+				SDL_Rect readyToServeTextureRenderQuad = { 20.0, 2 * (SCREEN_HEIGHT / 12.0), SCREEN_WIDTH - 40, SCREEN_HEIGHT / 12.0 };
+
+				SDL_RenderCopyEx(gRenderer, readyToServeTexture, NULL, &readyToServeTextureRenderQuad, 0, NULL, SDL_FLIP_NONE);
+				freeTextTexture(readyToServeTexture);
+			}
+
+			//Render scoreboard to screen
+			SDL_RenderCopyEx(gRenderer, scoreBoard->player1ScoreBoardTexture, NULL, &player1ScoreBoardRenderQuad, 0, NULL, SDL_FLIP_NONE);
+			SDL_RenderCopyEx(gRenderer, scoreBoard->player2ScoreBoardTexture, NULL, &player2ScoreBoardRenderQuad, 0, NULL, SDL_FLIP_NONE);
+
+			freeTextTexture(scoreBoard->player1ScoreBoardTexture);
+			freeTextTexture(scoreBoard->player2ScoreBoardTexture);
+		}
+		else if (currentGameState == GAMEOVER) {
+			SDL_RenderCopy(gRenderer, gCurrentTexture, NULL, NULL);
+
+			// Make start screen texture
+			SDL_Texture* winner1AnnouncementTexture = loadFromRenderedText("Congratulations player 1!", textColor);
+			SDL_Texture* winner2AnnouncementTexture = loadFromRenderedText("Congratulations player 2!", textColor);
+
+			SDL_Texture* playAgainTexture = loadFromRenderedText("Press p to play again!", textColor);
+
+			//SDL_Rect startScreenRenderQuad = { SCREEN_WIDTH - (scoreBoard->player1ScoreBoardWidth + BALL_WIDTH + 10.0), BALL_WIDTH, scoreBoard->player2ScoreBoardWidth, scoreBoard->player2ScoreBoardHeight };
+			//SDL_Rect startScreenRenderQuad = { 0.0, 0.0, SCREEN_WIDTH, SCREEN_HEIGHT/6.0 };
+			//SDL_Rect player1ControlsRenderQuad = { 0.0, SCREEN_HEIGHT / 6.0, SCREEN_WIDTH, SCREEN_HEIGHT / 12.0 };
+			//SDL_Rect player2ControlsRenderQuad = { 0.0, 2 * (SCREEN_HEIGHT / 6.0), SCREEN_WIDTH, SCREEN_HEIGHT / 12.0};
+			//SDL_Rect gameOverExplanationRenderQuad = { 0.0, 3 * (SCREEN_HEIGHT / 6.0), SCREEN_WIDTH, SCREEN_HEIGHT / 12.0};
+			//SDL_Rect howToStartRenderQuad = { 0.0, 4 * (SCREEN_HEIGHT / 6.0), SCREEN_WIDTH, SCREEN_HEIGHT / 12.0 };
+			SDL_Rect winnerAnnouncementrQuad = { 20.0, SCREEN_HEIGHT / 6.0, SCREEN_WIDTH - 40, SCREEN_HEIGHT / 6.0};
+			SDL_Rect playAgainQuad = { 20.0, 2 * (SCREEN_HEIGHT / 6.0), SCREEN_WIDTH - 40, SCREEN_HEIGHT / 6.0 };
+
+			//Render start menu to screen 
+			if (winner == 1)
+			{
+				SDL_RenderCopyEx(gRenderer, winner1AnnouncementTexture, NULL, &winnerAnnouncementrQuad, 0, NULL, SDL_FLIP_NONE);
+			}
+
+			if (winner == 2)
+			{
+				SDL_RenderCopyEx(gRenderer, winner2AnnouncementTexture, NULL, &winnerAnnouncementrQuad, 0, NULL, SDL_FLIP_NONE);
+			}
+
+			SDL_RenderCopyEx(gRenderer, playAgainTexture, NULL, &playAgainQuad, 0, NULL, SDL_FLIP_NONE);
+
+			// Free texture memory
+			freeTextTexture(winner1AnnouncementTexture);
+			freeTextTexture(winner2AnnouncementTexture);
+			freeTextTexture(playAgainTexture);
 		}
 
-		// Draw player rectangles
-		// Player 1
-		SDL_Rect fillRect = { PADDLE_MARGIN, (int)leftPlayerPaddleY, DIVIDER_BLOCK_WIDTH, PLAYER_PADDLE_HEIGHT };
-		SDL_SetRenderDrawColor(gRenderer, 0xFF, 0xFF, 0xFF, 0xFF);
-		renderRect(gRenderer, &fillRect);
-
-		// Player 2
-		fillRect = { SCREEN_WIDTH - PADDLE_MARGIN,(int)rightPlayerPaddleY, DIVIDER_BLOCK_WIDTH, PLAYER_PADDLE_HEIGHT };
-		SDL_SetRenderDrawColor(gRenderer, 0xFF, 0xFF, 0xFF, 0xFF);
-		renderRect(gRenderer, &fillRect);
-
-		// Draw ball
-		fillRect = {(int)ballX, (int)ballY, 2 * DIVIDER_BLOCK_WIDTH, 2 * DIVIDER_BLOCK_HEIGHT};
-		SDL_SetRenderDrawColor(gRenderer, 0xFF, 0xFF, 0xFF, 0xFF);
-		renderRect(gRenderer, &fillRect);
+		//SDL_RenderCopyEx(gRenderer, mTexture, NULL, NULL, 0, NULL, SDL_FLIP_NONE);
 
 		// Update screen
 		SDL_RenderPresent(gRenderer);
