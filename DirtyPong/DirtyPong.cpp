@@ -13,6 +13,7 @@ and may not be redistributed without written permission.*/
 #include <cmath>
 #include <time.h>
 #include <random>
+#include "input.h"
 
 //Screen dimension constexprants
 constexpr int SCREEN_WIDTH = 640;
@@ -442,14 +443,16 @@ int main( int argc, char* args[] )
 
 	// Input state  init
 	// Improvement: make this a bit mask
-	bool upHeld = false;
-	bool downHeld = false;
-	bool wHeld = false;
-	bool sHeld = false;
-	bool respawnBallHeld = false;
-	bool startPressed = false;
+	//bool upHeld = false;
+	//bool downHeld = false;
+	//bool wHeld = false;
+	//bool sHeld = false;
+	//bool respawnBallHeld = false;
+	//bool startPressed = false;
 	int player1Score = 0;
 	int player2Score = 0;
+
+	Input* inputThisFrame = new Input;
 
 	float deltaTime = PLACEHOLDER_DELTA_TIME;
 
@@ -459,91 +462,94 @@ int main( int argc, char* args[] )
 	while (!quit)
 	{
 		//// 1. Collect input
+
+		// dummmy input method call
+		collectInput(inputThisFrame);
 		
 		// Delta time implemenation attempt to return to, leaving commented out for now
 		//int deltaTime = ts.tv_nsec
 		
 		// Handle events on queue
 		// SDL_PollEvent() returns 1 if there are any events in the queue, otherwise it returns 0.
-		while (SDL_PollEvent(&e) != 0)
-		{
-			//User requests quit
-			if (e.type == SDL_QUIT)
-			{
-				quit = true;
-				return 0;
-			}
-			
-			// Handle keypress
-			if (e.type == SDL_KEYDOWN)
-			{
-				switch (e.key.keysym.sym)
-				{
-					// left player input
-					case SDLK_w:
-						wHeld = true;
-						break;
-					case SDLK_s:
-						sHeld = true;
-						break;
+		//while (SDL_PollEvent(&e) != 0)
+		//{
+		//	//User requests quit
+		//	if (e.type == SDL_QUIT)
+		//	{
+		//		quit = true;
+		//		return 0;
+		//	}
+		//	
+		//	// Handle keypress
+		//	if (e.type == SDL_KEYDOWN)
+		//	{
+		//		switch (e.key.keysym.sym)
+		//		{
+		//			// left player input
+		//			case SDLK_w:
+		//				wHeld = true;
+		//				break;
+		//			case SDLK_s:
+		//				sHeld = true;
+		//				break;
 
-					// right player input
-					case SDLK_UP:
-						upHeld = true;
-						break;
-					case SDLK_DOWN:
-						downHeld = true;
-						break;
+		//			// right player input
+		//			case SDLK_UP:
+		//				upHeld = true;
+		//				break;
+		//			case SDLK_DOWN:
+		//				downHeld = true;
+		//				break;
 
-					// general input
-					case SDLK_r:
-						respawnBallHeld = true;
-						break;
+		//			// general input
+		//			case SDLK_r:
+		//				respawnBallHeld = true;
+		//				break;
 
-					case SDLK_p:
-						startPressed = true;
-					default:
-						break;
-				}
-			} 
-			else if (e.type == SDL_KEYUP)
-			{
-				switch (e.key.keysym.sym)
-				{
-					// left player input
-					case SDLK_w:
-						wHeld = false;
-						break;
-					case SDLK_s:
-						sHeld = false;
-						break;
+		//			case SDLK_p:
+		//				startPressed = true;
+		//			default:
+		//				break;
+		//		}
+		//	} 
+		//	else if (e.type == SDL_KEYUP)
+		//	{
+		//		switch (e.key.keysym.sym)
+		//		{
+		//			// left player input
+		//			case SDLK_w:
+		//				wHeld = false;
+		//				break;
+		//			case SDLK_s:
+		//				sHeld = false;
+		//				break;
 
-					// right player input
-					case SDLK_UP:
-						upHeld = false;
-						break;
-					case SDLK_DOWN:
-						downHeld = false;
-						break;
+		//			// right player input
+		//			case SDLK_UP:
+		//				upHeld = false;
+		//				break;
+		//			case SDLK_DOWN:
+		//				downHeld = false;
+		//				break;
 
-					// general input
-					case SDLK_r:
-						respawnBallHeld = false;
-						break;
+		//			// general input
+		//			case SDLK_r:
+		//				respawnBallHeld = false;
+		//				break;
 
-					case SDLK_p:
-						startPressed = false;
-					default:
-						break;
-				}
-			}
-		}
+		//			case SDLK_p:
+		//				startPressed = false;
+		//			default:
+		//				break;
+		//		}
+		//	}
+		//}
 
 
 		//// 2. Update the game state
 		
 		// Handle player input
-		if (startPressed)
+		if (inputThisFrame->startPressed)
 		{
 			// Reset game state
 			if (currentGameState == GAMEOVER)
@@ -557,22 +563,22 @@ int main( int argc, char* args[] )
 			}
 		}
 
-		if (currentGameState == PLAYING && wHeld)
+		if (currentGameState == PLAYING && inputThisFrame->wHeld)
 		{
 			leftPlayerPaddleY -= (PLAYER_PADDLE_SPEED * deltaTime);
 		}
 
-		if (currentGameState == PLAYING && sHeld && (leftPlayerPaddleY <= (SCREEN_HEIGHT - PLAYER_PADDLE_HEIGHT / 2)))
+		if (currentGameState == PLAYING && inputThisFrame->sHeld && (leftPlayerPaddleY <= (SCREEN_HEIGHT - PLAYER_PADDLE_HEIGHT / 2)))
 		{
 			leftPlayerPaddleY += PLAYER_PADDLE_SPEED*deltaTime;
 		}
 
-		if (currentGameState == PLAYING && upHeld)
+		if (currentGameState == PLAYING && inputThisFrame->upHeld)
 		{
 			rightPlayerPaddleY -= (PLAYER_PADDLE_SPEED * deltaTime);
 		}
 
-		if (currentGameState == PLAYING && downHeld)
+		if (currentGameState == PLAYING && inputThisFrame->downHeld)
 		{
 			rightPlayerPaddleY += PLAYER_PADDLE_SPEED * deltaTime;
 		}
@@ -659,7 +665,7 @@ int main( int argc, char* args[] )
 			ballDirection.y *= -1;
 		}
 
-		if (respawnBallHeld && ballReadyToServe) {
+		if (inputThisFrame->respawnBallHeld && ballReadyToServe) {
 			respawnBall(ballReadyToServe, &ballSpeedScalar, &ballX, &ballY, &ballDirection.x, &ballDirection.y);
 			currentGameState = PLAYING;
 			ballReadyToServe = false;
